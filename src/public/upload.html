@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveSailing.AI - Upload Data</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e6f2ff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .logo-container {
+      background-color: #020053;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 0;
+    }
+    
+    .logo-container img {
+      max-width: 350px;
+      height: auto;
+    }
+    
+    .upload-card {
+      background-color: white;
+      width: 90%;
+      max-width: 800px;
+      margin: 20px auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    .upload-header {
+      background-color: #f0f0f0;
+      padding: 15px 20px;
+      border-bottom: 1px solid #e1e1e1;
+    }
+    
+    .upload-header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #333;
+    }
+    
+    .upload-content {
+      padding: 20px;
+    }
+    
+    .upload-instructions {
+      margin-bottom: 20px;
+      color: #555;
+    }
+    
+    .file-input-container {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    
+    .file-input-container input[type="file"] {
+      position: absolute;
+      width: 0.1px;
+      height: 0.1px;
+      opacity: 0;
+      overflow: hidden;
+      z-index: -1;
+    }
+    
+    .file-input-container label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f5f5f5;
+      color: #333;
+      border: 2px dashed #ddd;
+      border-radius: 10px;
+      padding: 40px 20px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    
+    .file-input-container label:hover {
+      border-color: #0078ff;
+      color: #0078ff;
+    }
+    
+    .file-input-container label i {
+      font-size: 2rem;
+      margin-right: 10px;
+    }
+    
+    .upload-button {
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+    
+    .upload-button:hover {
+      background-color: #0056b3;
+    }
+    
+    .status-container {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background-color: #f5f5f5;
+    }
+    
+    .status {
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+    
+    .progress-container {
+      width: 100%;
+      height: 10px;
+      background-color: #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background-color: #0078ff;
+      width: 0;
+      transition: width 0.3s ease;
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    
+    .data-table th, 
+    .data-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .data-table th {
+      background-color: #f5f5f5;
+      font-weight: 600;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .navigation {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    
+    .nav-button {
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 15px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    
+    .nav-button:hover {
+      background-color: #0056b3;
+    }
+    
+    @media (max-width: 768px) {
+      .upload-card {
+        width: 95%;
+        margin: 10px auto;
+      }
+      
+      .logo-container img {
+        max-width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="img/LoveSailing-Wide.jpg" alt="LoveSailing Logo">
+  </div>
+  
+  <div class="navigation">
+    <a href="/chat" class="nav-button">Go to Chat</a>
+  </div>
+  
+  <div class="upload-card">
+    <div class="upload-header">
+      <h2>Upload Sailing Race Results</h2>
+    </div>
+    
+    <div class="upload-content">
+      <p class="upload-instructions">Upload a CSV file containing sailing race results data to import into the database.</p>
+      
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="file-input-container">
+          <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+          <label for="csvFile">
+            <i class="fas fa-upload"></i>
+            <span id="fileNameLabel">Choose a CSV file</span>
+          </label>
+        </div>
+        
+        <button type="submit" class="upload-button">
+          <i class="fas fa-cloud-upload-alt"></i> Upload and Process Data
+        </button>
+      </form>
+      
+      <div id="uploadStatusContainer" class="status-container hidden">
+        <div id="uploadStatus" class="status"></div>
+        <div class="progress-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+      </div>
+      
+      <div id="dataPreviewSection" class="hidden">
+        <h3>Upload Summary</h3>
+        <div id="uploadSummary" class="upload-summary"></div>
+        
+        <h3>Recently Uploaded Data</h3>
+        <div class="data-table-container">
+          <table id="dataTable" class="data-table">
+            <thead>
+              <tr>
+                <th>Regatta</th>
+                <th>Date</th>
+                <th>Skipper</th>
+                <th>Position</th>
+                <th>Yacht Club</th>
+                <th>Category</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/upload.js"></script>
+</body>
+</html> 

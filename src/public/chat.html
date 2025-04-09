@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveSailing.AI - Chatbot</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e6f2ff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .logo-container {
+      background-color: #020053;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 0;
+    }
+    
+    .logo-container img {
+      max-width: 350px;
+      height: auto;
+    }
+    
+    .chat-card {
+      background-color: white;
+      width: 90%;
+      max-width: 800px;
+      margin: 20px auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+    
+    .chat-header {
+      background-color: #f0f0f0;
+      padding: 15px 20px;
+      border-bottom: 1px solid #e1e1e1;
+    }
+    
+    .chat-header p {
+      margin: 0;
+      font-size: 16px;
+      color: #333;
+    }
+    
+    .chat-messages {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+      min-height: 400px;
+      max-height: calc(100vh - 250px);
+    }
+    
+    .chat-input {
+      border-top: 1px solid #e1e1e1;
+      padding: 15px;
+      display: flex;
+    }
+    
+    .chat-input textarea {
+      flex-grow: 1;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px 15px;
+      resize: none;
+      height: 20px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    
+    .chat-input textarea:focus {
+      outline: none;
+      border-color: #0078ff;
+    }
+    
+    .send-button {
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 0 20px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .send-button:hover {
+      background-color: #0056b3;
+    }
+    
+    .clear-chat {
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 15px;
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .clear-chat:hover {
+      background-color: #d63939;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+    }
+    
+    .message p {
+      margin: 0;
+      padding: 10px 15px;
+      border-radius: 18px;
+      display: inline-block;
+      max-width: 80%;
+    }
+    
+    .user-message p {
+      background-color: #0078ff;
+      color: white;
+      border-bottom-right-radius: 5px;
+      text-align: right;
+      margin-left: auto;
+    }
+    
+    .bot-message p {
+      background-color: #f0f0f0;
+      color: #333;
+      border-bottom-left-radius: 5px;
+    }
+    
+    @media (max-width: 768px) {
+      .chat-card {
+        width: 95%;
+        margin: 10px auto;
+      }
+      
+      .logo-container img {
+        max-width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="img/LoveSailing-Wide.jpg" alt="LoveSailing Logo">
+  </div>
+  
+  <button class="clear-chat" id="clearChat">Clear Chat</button>
+  
+  <div class="chat-card">
+    <div class="chat-header">
+      <p>Welcome to LoveSailing.AI Talk to me</p>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages will appear here -->
+    </div>
+    
+    <div class="chat-input">
+      <textarea id="userInput" placeholder="Enter your question here..."></textarea>
+      <button class="send-button" id="sendButton">Send</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const chatMessages = document.getElementById('chatMessages');
+      const userInput = document.getElementById('userInput');
+      const sendButton = document.getElementById('sendButton');
+      const clearChat = document.getElementById('clearChat');
+      
+      // Add event listener for the send button
+      sendButton.addEventListener('click', sendMessage);
+      
+      // Add event listener for pressing Enter in the textarea
+      userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+      
+      // Clear chat functionality
+      clearChat.addEventListener('click', function() {
+        chatMessages.innerHTML = '';
+      });
+      
+      // Function to send a message
+      function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+        
+        // Add user message to chat
+        addMessageToChat('user', message);
+        
+        // Clear input
+        userInput.value = '';
+        
+        // Call the API to get a response
+        callChatAPI(message);
+      }
+      
+      // Function to add message to the chat
+      function addMessageToChat(role, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}-message`;
+        
+        const messageContent = document.createElement('p');
+        messageContent.textContent = content;
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // Function to call the chat API
+      async function callChatAPI(query) {
+        try {
+          // Add a temporary loading message
+          const loadingId = Date.now();
+          const loadingDiv = document.createElement('div');
+          loadingDiv.className = 'message bot-message';
+          loadingDiv.id = `loading-${loadingId}`;
+          
+          const loadingContent = document.createElement('p');
+          loadingContent.textContent = 'Thinking...';
+          
+          loadingDiv.appendChild(loadingContent);
+          chatMessages.appendChild(loadingDiv);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+          
+          // Call the API
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to get response');
+          }
+          
+          const data = await response.json();
+          
+          // Remove loading message
+          const loadingMessage = document.getElementById(`loading-${loadingId}`);
+          if (loadingMessage) {
+            chatMessages.removeChild(loadingMessage);
+          }
+          
+          // Add bot response
+          addMessageToChat('bot', data.response);
+          
+        } catch (error) {
+          console.error('Error calling chat API:', error);
+          
+          // Remove loading message if it exists
+          const loadingMessage = document.getElementById(`loading-${loadingId}`);
+          if (loadingMessage) {
+            chatMessages.removeChild(loadingMessage);
+          }
+          
+          // Add error message
+          addMessageToChat('bot', 'Sorry, I encountered an error. Please try again.');
+        }
+      }
+    });
+  </script>
+</body>
+</html> 
