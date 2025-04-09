@@ -30,6 +30,7 @@ IMPORTANT SEARCH INSTRUCTIONS:
 - Prioritize sailor_search for any input that resembles a person's name
 - Allow for partial or fuzzy name matches (e.g., "John" should match "John Smith")
 - For ambiguous queries with names, default to sailor_search over other query types
+- IMPORTANT: Sometimes skipper names are incorrectly stored in the boat_name column, so both fields should be checked
 
 RESPONSE STYLE:
 - Keep answers short and concise
@@ -136,7 +137,7 @@ const generateResponse = async (queryType, data) => {
     // Create a prompt based on the query type and data
     switch (queryType) {
       case 'sailor_search':
-        contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary about this sailor, including their club, achievements, and race history. Start with key statistics.`;
+        contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary about this sailor, including their club, achievements, and race history. Start with key statistics. Note that the name may have been found in either the skipper field or boat_name field due to data inconsistency.`;
         break;
       case 'boat_search':
         contextPrompt = `Here is information about the boat "${data.boatName}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary about this boat, including who sails it, its performance, and any other interesting statistics.`;
@@ -148,7 +149,7 @@ const generateResponse = async (queryType, data) => {
         contextPrompt = `Here are the results for the regatta "${data.regattaName}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary of these regatta results, highlighting the top performers, notable clubs, and key statistics.`;
         break;
       case 'database_status':
-        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nPlease provide a concise bullet-point summary of the database contents, highlighting key statistics such as "I know about X sailing clubs", "I have Y regattas in my database", etc.`;
+        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nPlease provide a well-formatted summary of the database contents, using bullet points (•) for statistics. Include key information such as total records, number of sailing clubs, number of regattas, number of sailors, date ranges, etc. If potential_name_mismatches exists and is greater than 0, mention that there are potentially X sailor names incorrectly stored in the boat_name column. Use proper spacing and alignment, with a blank line between each main section. Format numeric data with proper alignment for better readability.`;
         break;
       case 'regatta_count':
         contextPrompt = `Here are the regattas that took place in ${data.year}:\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary of these regattas, their timing, and participation statistics.`;
@@ -161,7 +162,7 @@ const generateResponse = async (queryType, data) => {
     const response = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview', // or whichever model is appropriate
       messages: [
-        { role: 'system', content: 'You are a helpful assistant specializing in sailing races. Provide clear, concise, and informative responses about sailing data. Use bullet points and statistics prominently. Keep answers short.' },
+        { role: 'system', content: 'You are a helpful assistant specializing in sailing races. Provide clear, well-formatted responses about sailing data. FORMAT GUIDELINES: 1) Use proper bullet points (•) for lists, 2) Add blank lines between sections, 3) Use consistent indentation for related items, 4) Format statistics with proper alignment, 5) For numeric data, align decimal points, 6) Use clear section headers in bold, 7) Present tabular data in a visually organized manner with consistent spacing. Keep all responses concise and informative.' },
         { role: 'user', content: contextPrompt }
       ],
       temperature: 0.7, // Slightly higher temperature for more natural responses

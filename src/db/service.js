@@ -97,10 +97,20 @@ class RegattaService {
         values.push(`%${skipperName}%`);
         valueIndex++;
         
+        // Also check boat_name column for skipper name due to data inconsistency
+        nameConditions.push(`boat_name ILIKE $${valueIndex}`);
+        values.push(`%${skipperName}%`);
+        valueIndex++;
+        
         // Match individual words in the name (first name, last name, etc.)
         for (const part of nameParts) {
           if (part.length > 2) { // Only use meaningful parts (avoid searching for "a", "to", etc.)
             nameConditions.push(`skipper ILIKE $${valueIndex}`);
+            values.push(`%${part}%`);
+            valueIndex++;
+            
+            // Also check boat_name column for name parts
+            nameConditions.push(`boat_name ILIKE $${valueIndex}`);
             values.push(`%${part}%`);
             valueIndex++;
           }
@@ -109,17 +119,22 @@ class RegattaService {
         query += ` AND (${nameConditions.join(' OR ')})`;
       } else {
         // Single word search
-        query += ` AND skipper ILIKE $${valueIndex}`;
+        query += ` AND (skipper ILIKE $${valueIndex} OR boat_name ILIKE $${valueIndex+1})`;
+        values.push(`%${skipperName}%`);
+        valueIndex++;
         values.push(`%${skipperName}%`);
         valueIndex++;
       }
       
-      // Order by exact match first, then by relevance
+      // Order by exact match in skipper column first, then boat_name column, then by relevance
       query += ` ORDER BY 
                  CASE WHEN LOWER(skipper) = LOWER('${skipperName}') THEN 0
-                      WHEN LOWER(skipper) LIKE LOWER('${skipperName}%') THEN 1
-                      WHEN LOWER(skipper) LIKE LOWER('%${skipperName}%') THEN 2
-                      ELSE 3
+                      WHEN LOWER(boat_name) = LOWER('${skipperName}') THEN 1
+                      WHEN LOWER(skipper) LIKE LOWER('${skipperName}%') THEN 2
+                      WHEN LOWER(boat_name) LIKE LOWER('${skipperName}%') THEN 3
+                      WHEN LOWER(skipper) LIKE LOWER('%${skipperName}%') THEN 4
+                      WHEN LOWER(boat_name) LIKE LOWER('%${skipperName}%') THEN 5
+                      ELSE 6
                  END`;
     } else {
       // Other search criteria
@@ -215,7 +230,11 @@ class RegattaService {
         COUNT(DISTINCT regatta_name) as total_regattas,
         COUNT(DISTINCT yacht_club) as total_clubs,
         MIN(regatta_date) as earliest_date,
-        MAX(regatta_date) as latest_date
+        MAX(regatta_date) as latest_date,
+        (SELECT COUNT(*) FROM RegattaNetworkData 
+         WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
+         AND boat_name NOT IN (SELECT boat_name FROM RegattaNetworkData WHERE boat_name = skipper)) 
+         as potential_name_mismatches
       FROM RegattaNetworkData
     `;
     
