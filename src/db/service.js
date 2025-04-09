@@ -84,60 +84,59 @@ class RegattaService {
     let valueIndex = 1;
     
     if (criteria.skipper) {
-      // Enhanced skipper name search (supports partial matches more effectively)
+      // Enhanced skipper name search with strict matching
       const skipperName = criteria.skipper.trim();
-      const nameParts = skipperName.split(/\s+/);
       
-      if (nameParts.length > 1) {
-        // If multiple words, try to match full name or parts
-        let nameConditions = [];
-        
-        // Full name exact match with higher priority
-        nameConditions.push(`skipper ILIKE $${valueIndex}`);
-        values.push(`%${skipperName}%`);
-        valueIndex++;
-        
-        // Also check boat_name column for skipper name due to data inconsistency
-        nameConditions.push(`boat_name ILIKE $${valueIndex}`);
-        values.push(`%${skipperName}%`);
-        valueIndex++;
-        
-        // Match individual words in the name (first name, last name, etc.)
-        for (const part of nameParts) {
-          if (part.length > 2) { // Only use meaningful parts (avoid searching for "a", "to", etc.)
-            nameConditions.push(`skipper ILIKE $${valueIndex}`);
-            values.push(`%${part}%`);
-            valueIndex++;
-            
-            // Also check boat_name column for name parts
-            nameConditions.push(`boat_name ILIKE $${valueIndex}`);
-            values.push(`%${part}%`);
-            valueIndex++;
-          }
-        }
-        
-        query += ` AND (${nameConditions.join(' OR ')})`;
-      } else {
-        // Single word search
-        query += ` AND (skipper ILIKE $${valueIndex} OR boat_name ILIKE $${valueIndex+1})`;
-        values.push(`%${skipperName}%`);
-        valueIndex++;
-        values.push(`%${skipperName}%`);
-        valueIndex++;
-      }
+      // Create conditions for exact matches with higher priority
+      let nameConditions = [];
       
-      // Order by exact match in skipper column first, then boat_name column, then by relevance
+      // Exact match conditions (case sensitive and insensitive)
+      nameConditions.push(`skipper = $${valueIndex}`); 
+      values.push(skipperName);
+      valueIndex++;
+      
+      nameConditions.push(`LOWER(skipper) = LOWER($${valueIndex})`);
+      values.push(skipperName);
+      valueIndex++;
+      
+      // Starts with exact first name/last name
+      nameConditions.push(`skipper ILIKE $${valueIndex}`);
+      values.push(`${skipperName}%`);
+      valueIndex++;
+      
+      // Also check boat_name for exact matches
+      nameConditions.push(`boat_name = $${valueIndex}`); 
+      values.push(skipperName);
+      valueIndex++;
+      
+      nameConditions.push(`LOWER(boat_name) = LOWER($${valueIndex})`);
+      values.push(skipperName);
+      valueIndex++;
+      
+      // Only as a fallback, allow partial matches within the name
+      nameConditions.push(`skipper ILIKE $${valueIndex}`);
+      values.push(`%${skipperName}%`);  
+      valueIndex++;
+      
+      nameConditions.push(`boat_name ILIKE $${valueIndex}`);
+      values.push(`%${skipperName}%`);
+      valueIndex++;
+      
+      query += ` AND (${nameConditions.join(' OR ')})`;
+      
+      // Order by exact match first, then partial matches
       query += ` ORDER BY 
-                 CASE WHEN LOWER(skipper) = LOWER('${skipperName}') THEN 0
-                      WHEN LOWER(boat_name) = LOWER('${skipperName}') THEN 1
-                      WHEN LOWER(skipper) LIKE LOWER('${skipperName}%') THEN 2
-                      WHEN LOWER(boat_name) LIKE LOWER('${skipperName}%') THEN 3
-                      WHEN LOWER(skipper) LIKE LOWER('%${skipperName}%') THEN 4
-                      WHEN LOWER(boat_name) LIKE LOWER('%${skipperName}%') THEN 5
-                      ELSE 6
-                 END`;
+                CASE WHEN skipper = '${skipperName}' THEN 0
+                    WHEN LOWER(skipper) = LOWER('${skipperName}') THEN 1
+                    WHEN boat_name = '${skipperName}' THEN 2
+                    WHEN LOWER(boat_name) = LOWER('${skipperName}') THEN 3
+                    WHEN skipper ILIKE '${skipperName}%' THEN 4
+                    WHEN LOWER(skipper) LIKE LOWER('%${skipperName}%') THEN 5
+                    WHEN LOWER(boat_name) LIKE LOWER('%${skipperName}%') THEN 6
+                    ELSE 7
+                END, regatta_date DESC`;
     } else {
-      // Other search criteria
+      // Other search criteria - keep as is
       if (criteria.boat_name) {
         query += ` AND boat_name ILIKE $${valueIndex}`;
         values.push(`%${criteria.boat_name}%`);
@@ -166,7 +165,7 @@ class RegattaService {
       query += ` ORDER BY regatta_date DESC, position ASC`;
     }
     
-    // Add limit
+    // Add limit for non-sailor searches to avoid too many results
     if (!query.includes('LIMIT') && !criteria.skipper) {
       query += ' LIMIT 100';
     }

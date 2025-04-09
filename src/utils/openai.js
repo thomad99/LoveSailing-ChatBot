@@ -137,35 +137,35 @@ const generateResponse = async (queryType, data) => {
     // Create a prompt based on the query type and data
     switch (queryType) {
       case 'sailor_search':
-        contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary about this sailor, including their club, achievements, and race history. Start with key statistics. Note that the name may have been found in either the skipper field or boat_name field due to data inconsistency.`;
+        contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet with the key information about this sailor organized by categories: 1) Basic info (name, club), 2) Top achievements (positions 1-3 only, with regatta names and dates), 3) Recent race history (only list positions and race names). Include only factual data without commentary.`;
         break;
       case 'boat_search':
-        contextPrompt = `Here is information about the boat "${data.boatName}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary about this boat, including who sails it, its performance, and any other interesting statistics.`;
+        contextPrompt = `Here is information about the boat "${data.boatName}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet about this boat, with factual data about who sails it and its performance record.`;
         break;
       case 'top_sailors':
-        contextPrompt = `Here are the top sailors from ${data.yachtClub}:\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point ranking of these sailors, mentioning their performance statistics.`;
+        contextPrompt = `Here are the top sailors from ${data.yachtClub}:\n${JSON.stringify(data.results, null, 2)}\n\nList only the sailors' names, clubs, and key performance statistics in a compact format.`;
         break;
       case 'regatta_results':
-        contextPrompt = `Here are the results for the regatta "${data.regattaName}":\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary of these regatta results, highlighting the top performers, notable clubs, and key statistics.`;
+        contextPrompt = `Here are the results for the regatta "${data.regattaName}":\n${JSON.stringify(data.results, null, 2)}\n\nList only the top 10 finishers with position, name and club in a compact tabular format.`;
         break;
       case 'database_status':
-        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nPlease provide a well-formatted summary of the database contents, using bullet points (•) for statistics. Include key information such as total records, number of sailing clubs, number of regattas, number of sailors, date ranges, etc. If potential_name_mismatches exists and is greater than 0, mention that there are potentially X sailor names incorrectly stored in the boat_name column. Use proper spacing and alignment, with a blank line between each main section. Format numeric data with proper alignment for better readability.`;
+        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nProvide only the key statistics as bullet points showing total records, sailors, regattas, and clubs with their counts. If potential_name_mismatches exists and is greater than 0, mention that there are potentially X sailor names incorrectly stored in the boat_name column.`;
         break;
       case 'regatta_count':
-        contextPrompt = `Here are the regattas that took place in ${data.year}:\n${JSON.stringify(data.results, null, 2)}\n\nPlease provide a concise bullet-point summary of these regattas, their timing, and participation statistics.`;
+        contextPrompt = `Here are the regattas that took place in ${data.year}:\n${JSON.stringify(data.results, null, 2)}\n\nList only regatta names, dates, and participant counts in a compact tabular format.`;
         break;
       default:
-        contextPrompt = `Here is some information from the sailing database:\n${JSON.stringify(data, null, 2)}\n\nPlease provide a helpful concise, bullet-point response based on this data, emphasizing key statistics.`;
+        contextPrompt = `Here is some information from the sailing database:\n${JSON.stringify(data, null, 2)}\n\nProvide only a compact list of the key statistics or data points shown, without commentary.`;
     }
     
     // Call OpenAI to generate a natural language response
     const response = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview', // or whichever model is appropriate
       messages: [
-        { role: 'system', content: 'You are a helpful assistant specializing in sailing races. Provide clear, well-formatted responses about sailing data. FORMAT GUIDELINES: 1) Use proper bullet points (•) for lists, 2) Add blank lines between sections, 3) Use consistent indentation for related items, 4) Format statistics with proper alignment, 5) For numeric data, align decimal points, 6) Use clear section headers in bold, 7) Present tabular data in a visually organized manner with consistent spacing. Keep all responses concise and informative.' },
+        { role: 'system', content: 'You are a data reporting system for sailing competitions. Your responses should be extremely concise, focusing only on direct facts from the data without narrative, explanations or commentary. FORMAT GUIDELINES: 1) Use "Sailor:" as header for person data, 2) Use structured format with colon-separated values for statistics (e.g., "Position: 1st"), 3) Group information by categories, 4) Only include data that is present in the results, 5) For races and achievements, use compact bulleted lists with minimal text, 6) NO narrative descriptions - just facts. Limit your response to the most relevant data points without storytelling or explanations.' },
         { role: 'user', content: contextPrompt }
       ],
-      temperature: 0.7, // Slightly higher temperature for more natural responses
+      temperature: 0.3, // Lower temperature for more consistent factual responses
       max_tokens: 500
     });
     
