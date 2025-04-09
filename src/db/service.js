@@ -3,6 +3,13 @@ const { pool } = require('./init');
 class RegattaService {
   // Insert a single record
   async insertRecord(record) {
+    console.log('Attempting to insert record:', record);
+    
+    // Set default values for missing but required fields
+    if (!record.yacht_club || record.yacht_club === '') {
+      record.yacht_club = 'Unknown';
+    }
+    
     const query = `
       INSERT INTO RegattaNetworkData (
         regatta_name, regatta_date, category, position, 
@@ -27,9 +34,11 @@ class RegattaService {
     
     try {
       const result = await pool.query(query, values);
+      console.log('Successfully inserted record:', result.rows[0]);
       return result.rows[0];
     } catch (error) {
       console.error('Error inserting record:', error);
+      console.error('Failed values:', values);
       throw error;
     }
   }

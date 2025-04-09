@@ -35,39 +35,58 @@ const normalizeRecord = (data) => {
 
   // Try to extract the needed fields from the CSV using various possible column names
   const record = {
-    regatta_name: extractField(data, headers, ['regatta name', 'regatta', 'event name', 'event']),
-    regatta_date: parseDate(extractField(data, headers, ['regatta date', 'date', 'event date'])),
+    regatta_name: extractField(data, headers, ['regatta name', 'regatta', 'event name', 'event', 'regatta_name']),
+    regatta_date: parseDate(extractField(data, headers, ['regatta date', 'date', 'event date', 'regatta_date'])),
     category: extractField(data, headers, ['category', 'class', 'boat class', 'division']),
     position: parseInt(extractField(data, headers, ['position', 'place', 'rank', 'finish'])) || null,
-    sail_number: extractField(data, headers, ['sail number', 'sail #', 'sail', 'number']),
-    boat_name: extractField(data, headers, ['boat name', 'boat', 'vessel']),
+    sail_number: extractField(data, headers, ['sail number', 'sail #', 'sail', 'number', 'sail_number']),
+    boat_name: extractField(data, headers, ['boat name', 'boat', 'vessel', 'boat_name']),
     skipper: extractField(data, headers, ['skipper', 'sailor', 'racer', 'person', 'competitor', 'name', 'kid', 'adult']),
-    yacht_club: extractField(data, headers, ['yacht club', 'club', 'team', 'organization']),
+    yacht_club: extractField(data, headers, ['yacht club', 'club', 'team', 'organization', 'yacht_club']),
     results: extractField(data, headers, ['results', 'races', 'race results', 'scores']),
-    total_points: parseFloat(extractField(data, headers, ['total points', 'points', 'score', 'total'])) || null
+    total_points: parseFloat(extractField(data, headers, ['total points', 'points', 'score', 'total', 'total_points'])) || null
   };
 
+  // For debugging
+  console.log('Extracted record:', record);
+
   // Ensure we have at least the required fields
-  if (!record.regatta_name || !record.skipper) {
-    console.warn('Skipping record due to missing required fields:', data);
+  if (!record.regatta_name && !record.skipper) {
+    console.warn('Skipping record due to missing both required fields:', data);
     return null;
   }
 
-  return record;
+  // If yacht_club is empty but we have other required fields, let's not skip
+  if (record.regatta_name && record.skipper) {
+    if (!record.yacht_club) {
+      record.yacht_club = "Unknown"; // Set a default value
+    }
+    return record;
+  }
+
+  console.warn('Skipping record due to missing required fields:', data);
+  return null;
 };
 
 // Helper to extract a field from various possible column names
 const extractField = (data, headers, possibleNames) => {
   for (const name of possibleNames) {
-    // Check if column exists directly
+    // Check if column exists directly (case-sensitive)
     if (data[name] !== undefined) {
       return data[name];
     }
     
-    // Check if column exists in lowercase mapping
+    // Check if column exists in lowercase mapping (case-insensitive)
     const headerKey = headers[name];
     if (headerKey && data[headerKey] !== undefined) {
       return data[headerKey];
+    }
+    
+    // Try checking exact keys without lowercase conversion
+    for (const key in data) {
+      if (key.toLowerCase() === name.toLowerCase()) {
+        return data[key];
+      }
     }
   }
   return null;
