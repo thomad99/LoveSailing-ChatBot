@@ -84,34 +84,80 @@ class RegattaService {
     let valueIndex = 1;
     
     if (criteria.skipper) {
-      query += ` AND skipper ILIKE $${valueIndex}`;
-      values.push(`%${criteria.skipper}%`);
-      valueIndex++;
+      // Enhanced skipper name search (supports partial matches more effectively)
+      const skipperName = criteria.skipper.trim();
+      const nameParts = skipperName.split(/\s+/);
+      
+      if (nameParts.length > 1) {
+        // If multiple words, try to match full name or parts
+        let nameConditions = [];
+        
+        // Full name exact match with higher priority
+        nameConditions.push(`skipper ILIKE $${valueIndex}`);
+        values.push(`%${skipperName}%`);
+        valueIndex++;
+        
+        // Match individual words in the name (first name, last name, etc.)
+        for (const part of nameParts) {
+          if (part.length > 2) { // Only use meaningful parts (avoid searching for "a", "to", etc.)
+            nameConditions.push(`skipper ILIKE $${valueIndex}`);
+            values.push(`%${part}%`);
+            valueIndex++;
+          }
+        }
+        
+        query += ` AND (${nameConditions.join(' OR ')})`;
+      } else {
+        // Single word search
+        query += ` AND skipper ILIKE $${valueIndex}`;
+        values.push(`%${skipperName}%`);
+        valueIndex++;
+      }
+      
+      // Order by exact match first, then by relevance
+      query += ` ORDER BY 
+                 CASE WHEN LOWER(skipper) = LOWER('${skipperName}') THEN 0
+                      WHEN LOWER(skipper) LIKE LOWER('${skipperName}%') THEN 1
+                      WHEN LOWER(skipper) LIKE LOWER('%${skipperName}%') THEN 2
+                      ELSE 3
+                 END`;
+    } else {
+      // Other search criteria
+      if (criteria.boat_name) {
+        query += ` AND boat_name ILIKE $${valueIndex}`;
+        values.push(`%${criteria.boat_name}%`);
+        valueIndex++;
+      }
+      
+      if (criteria.yacht_club) {
+        query += ` AND yacht_club ILIKE $${valueIndex}`;
+        values.push(`%${criteria.yacht_club}%`);
+        valueIndex++;
+      }
+      
+      if (criteria.regatta_name) {
+        query += ` AND regatta_name ILIKE $${valueIndex}`;
+        values.push(`%${criteria.regatta_name}%`);
+        valueIndex++;
+      }
+      
+      if (criteria.year) {
+        query += ` AND EXTRACT(YEAR FROM regatta_date) = $${valueIndex}`;
+        values.push(criteria.year);
+        valueIndex++;
+      }
+      
+      // Default ordering
+      query += ` ORDER BY regatta_date DESC, position ASC`;
     }
     
-    if (criteria.boat_name) {
-      query += ` AND boat_name ILIKE $${valueIndex}`;
-      values.push(`%${criteria.boat_name}%`);
-      valueIndex++;
+    // Add limit
+    if (!query.includes('LIMIT') && !criteria.skipper) {
+      query += ' LIMIT 100';
     }
     
-    if (criteria.yacht_club) {
-      query += ` AND yacht_club ILIKE $${valueIndex}`;
-      values.push(`%${criteria.yacht_club}%`);
-      valueIndex++;
-    }
-    
-    if (criteria.regatta_name) {
-      query += ` AND regatta_name ILIKE $${valueIndex}`;
-      values.push(`%${criteria.regatta_name}%`);
-      valueIndex++;
-    }
-    
-    if (criteria.year) {
-      query += ` AND EXTRACT(YEAR FROM regatta_date) = $${valueIndex}`;
-      values.push(criteria.year);
-      valueIndex++;
-    }
+    console.log('Search query:', query);
+    console.log('Search values:', values);
     
     try {
       const result = await pool.query(query, values);

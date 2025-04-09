@@ -31,7 +31,7 @@
       height: auto;
     }
     
-    .upload-card {
+    .upload-card, .stats-card {
       background-color: white;
       width: 90%;
       max-width: 800px;
@@ -41,19 +41,19 @@
       overflow: hidden;
     }
     
-    .upload-header {
+    .card-header {
       background-color: #f0f0f0;
       padding: 15px 20px;
       border-bottom: 1px solid #e1e1e1;
     }
     
-    .upload-header h2 {
+    .card-header h2 {
       margin: 0;
       font-size: 18px;
       color: #333;
     }
     
-    .upload-content {
+    .card-content {
       padding: 20px;
     }
     
@@ -185,14 +185,68 @@
       background-color: #0056b3;
     }
     
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    
+    .stat-card {
+      background-color: #f5f7fa;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .stat-card .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0078ff;
+      margin: 5px 0;
+    }
+    
+    .stat-card .stat-label {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .refresh-button {
+      background-color: #f0f0f0;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 15px;
+      margin-top: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+    }
+    
+    .refresh-button:hover {
+      background-color: #e0e0e0;
+    }
+    
     @media (max-width: 768px) {
-      .upload-card {
+      .upload-card, .stats-card {
         width: 95%;
         margin: 10px auto;
       }
       
       .logo-container img {
         max-width: 250px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -206,12 +260,56 @@
     <a href="/chat" class="nav-button">Go to Chat</a>
   </div>
   
+  <!-- Stats Card -->
+  <div class="stats-card">
+    <div class="card-header">
+      <h2>Database Statistics</h2>
+    </div>
+    
+    <div class="card-content">
+      <div id="stats-loading">Loading statistics...</div>
+      <div id="stats-error" class="hidden">Error loading statistics.</div>
+      <div id="stats-content" class="hidden">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Table Name</div>
+            <div class="stat-value">RegattaNetworkData</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Records</div>
+            <div id="totalRecords" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique Sailors</div>
+            <div id="totalSailors" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique Regattas</div>
+            <div id="totalRegattas" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unique Clubs</div>
+            <div id="totalClubs" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Date Range</div>
+            <div id="dateRange" class="stat-value">N/A</div>
+          </div>
+        </div>
+        <button id="refreshStats" class="refresh-button">
+          <i class="fas fa-sync-alt"></i> Refresh Statistics
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Upload Card -->
   <div class="upload-card">
-    <div class="upload-header">
+    <div class="card-header">
       <h2>Upload Sailing Race Results</h2>
     </div>
     
-    <div class="upload-content">
+    <div class="card-content">
       <p class="upload-instructions">Upload a CSV file containing sailing race results data to import into the database.</p>
       
       <form id="uploadForm" enctype="multipart/form-data">
@@ -262,5 +360,76 @@
   </div>
 
   <script src="js/upload.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const statsLoading = document.getElementById('stats-loading');
+      const statsError = document.getElementById('stats-error');
+      const statsContent = document.getElementById('stats-content');
+      const totalRecords = document.getElementById('totalRecords');
+      const totalSailors = document.getElementById('totalSailors');
+      const totalRegattas = document.getElementById('totalRegattas');
+      const totalClubs = document.getElementById('totalClubs');
+      const dateRange = document.getElementById('dateRange');
+      const refreshStatsButton = document.getElementById('refreshStats');
+      
+      // Function to fetch and display database stats
+      async function fetchDatabaseStats() {
+        statsLoading.classList.remove('hidden');
+        statsError.classList.add('hidden');
+        statsContent.classList.add('hidden');
+        
+        try {
+          const response = await fetch('/api/data/stats');
+          
+          if (!response.ok) {
+            throw new Error('Error fetching database stats');
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            totalRecords.textContent = data.data.total_records || '0';
+            totalSailors.textContent = data.data.total_sailors || '0';
+            totalRegattas.textContent = data.data.total_regattas || '0';
+            totalClubs.textContent = data.data.total_clubs || '0';
+            
+            // Format date range
+            const earliest = data.data.earliest_date ? new Date(data.data.earliest_date).toLocaleDateString() : 'N/A';
+            const latest = data.data.latest_date ? new Date(data.data.latest_date).toLocaleDateString() : 'N/A';
+            
+            if (earliest !== 'N/A' && latest !== 'N/A') {
+              dateRange.textContent = `${earliest} - ${latest}`;
+            } else {
+              dateRange.textContent = 'N/A';
+            }
+            
+            statsLoading.classList.add('hidden');
+            statsContent.classList.remove('hidden');
+          } else {
+            throw new Error('Invalid data format');
+          }
+        } catch (error) {
+          console.error('Error fetching stats:', error);
+          statsLoading.classList.add('hidden');
+          statsError.classList.remove('hidden');
+        }
+      }
+      
+      // Initial stats load
+      fetchDatabaseStats();
+      
+      // Refresh button event listener
+      refreshStatsButton.addEventListener('click', fetchDatabaseStats);
+      
+      // Also refresh stats after a successful upload
+      const originalFetchAndDisplayData = window.fetchAndDisplayData;
+      if (originalFetchAndDisplayData) {
+        window.fetchAndDisplayData = async function() {
+          await originalFetchAndDisplayData.apply(this, arguments);
+          fetchDatabaseStats();
+        }
+      }
+    });
+  </script>
 </body>
 </html> 

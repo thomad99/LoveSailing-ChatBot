@@ -162,4 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error fetching and displaying data:', error);
     }
   }
+  
+  // Expose fetchAndDisplayData for the stats feature
+  window.fetchAndDisplayData = fetchAndDisplayData;
 }); 
