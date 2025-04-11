@@ -264,6 +264,19 @@ class RegattaService {
       throw error;
     }
   }
+
+  // Clear all records from the database
+  async clearDatabase() {
+    const query = 'TRUNCATE TABLE RegattaNetworkData RESTART IDENTITY CASCADE';
+    
+    try {
+      await pool.query(query);
+      return true;
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new RegattaService(); 

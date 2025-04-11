@@ -249,6 +249,21 @@
         grid-template-columns: 1fr;
       }
     }
+    
+    .clear-button {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    .clear-button:hover {
+      background-color: #c82333;
+    }
   </style>
 </head>
 <body>
@@ -429,6 +444,34 @@
           fetchDatabaseStats();
         }
       }
+
+      // Add clear database functionality
+      document.getElementById('clearDatabase').addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to clear the database? This action cannot be undone.')) {
+          return;
+        }
+
+        const status = document.getElementById('status');
+        status.textContent = 'Clearing database...';
+        status.className = 'status';
+
+        try {
+          const response = await fetch('/api/upload/clear', {
+            method: 'POST'
+          });
+          const data = await response.json();
+          
+          if (data.success) {
+            status.textContent = 'Database cleared successfully';
+            status.className = 'status success';
+          } else {
+            throw new Error(data.error || 'Failed to clear database');
+          }
+        } catch (error) {
+          status.textContent = `Error: ${error.message}`;
+          status.className = 'status error';
+        }
+      });
     });
   </script>
 </body>
