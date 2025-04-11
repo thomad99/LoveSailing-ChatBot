@@ -235,6 +235,85 @@
         max-width: 250px;
       }
     }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .data-table th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .data-table tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .data-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .data-section h3 {
+      margin: 0 0 15px 0;
+      color: #0056b3;
+      font-size: 1.2em;
+      border-bottom: 2px solid #0078ff;
+      padding-bottom: 5px;
+      display: inline-block;
+    }
+
+    .numeric-cell {
+      text-align: right;
+      font-family: 'Consolas', monospace;
+    }
+
+    .date-cell {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .message.bot-message .data-section {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .download-button {
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .download-button:hover {
+      background-color: #0056b3;
+    }
+
+    .message-content {
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -301,42 +380,22 @@
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
         
-        const messageContent = document.createElement('div'); // Change from p to div for better flexibility
+        const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        // Format the content
-        let formattedContent = content;
-        
-        if (!isUser) {
-          // Convert bullet points
-          formattedContent = formattedContent.replace(/•\s*(.*?)(\n|$)/g, '<li>$1</li>');
-          
-          // Wrap bullet point lists in <ul> tags
-          if (formattedContent.includes('<li>')) {
-            formattedContent = formattedContent.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+        if (!isUser && window.lastQueryType && window.lastQueryData) {
+          const tableHtml = formatDataAsTable(window.lastQueryData, window.lastQueryType);
+          if (tableHtml) {
+            messageContent.innerHTML = tableHtml;
+          } else {
+            messageContent.textContent = content;
           }
-          
-          // Handle bold text (wrapped in ** or marked as headers)
-          formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-          
-          // Make sailor names bold in responses
-          formattedContent = formattedContent.replace(/([A-Z][a-z]+ [A-Z][a-z]+)/g, '<strong class="name">$1</strong>');
-          
-          // Make search results more readable
-          formattedContent = formattedContent.replace(/(Club|Races|Points|Club Rating):/g, '<strong>$1:</strong>');
-          
-          // Preserve whitespace and line breaks
-          formattedContent = formattedContent.replace(/\n\n/g, '<br><br>');
-          formattedContent = formattedContent.replace(/\n/g, '<br>');
+        } else {
+          messageContent.textContent = content;
         }
         
-        messageContent.innerHTML = formattedContent;
-        messageContent.style.whiteSpace = 'pre-wrap';
         messageDiv.appendChild(messageContent);
-        
         chatMessages.appendChild(messageDiv);
-        
-        // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
       
@@ -353,6 +412,10 @@
           
           const data = await response.json();
           
+          // Store the query type and data for table formatting
+          window.lastQueryType = data.queryType;
+          window.lastQueryData = data.data;
+          
           // Hide typing indicator
           typingIndicator.style.display = 'none';
           
@@ -368,6 +431,169 @@
           // Add error message
           addMessageToChat('Sorry, I encountered an error. Please try again.');
         }
+      }
+
+      function formatDataAsTable(data, type) {
+        if (!data || !data.results || data.results.length === 0) return null;
+
+        let html = '<div class="data-section">';
+        
+        switch (type) {
+          case 'sailor_search':
+            html += `<h3>Basic Info</h3>
+            <table class="data-table">
+              <tr>
+                <th>Name</th>
+                <th>Club</th>
+              </tr>
+              <tr>
+                <td>${data.skipper}</td>
+                <td>${data.results[0].yacht_club || '-'}</td>
+              </tr>
+            </table>
+
+            <h3>Top Achievements</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Regatta Name</th>
+                <th>Date</th>
+              </tr>`;
+            
+            // Filter and sort top achievements (positions 1-3)
+            const topAchievements = data.results
+              .filter(r => !isNaN(r.position) && r.position <= 3)
+              .sort((a, b) => a.position - b.position);
+            
+            topAchievements.forEach(result => {
+              html += `<tr>
+                <td class="numeric-cell">${result.position}</td>
+                <td>${result.regatta_name}</td>
+                <td class="date-cell">${formatDate(result.regatta_date)}</td>
+              </tr>`;
+            });
+            
+            html += `</table>
+
+            <h3>Recent Race History</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Regatta Name</th>
+                <th>Date</th>
+              </tr>`;
+            
+            // Sort by date descending
+            data.results
+              .sort((a, b) => new Date(b.regatta_date) - new Date(a.regatta_date))
+              .slice(0, 10)
+              .forEach(result => {
+                html += `<tr>
+                  <td class="numeric-cell">${result.position}</td>
+                  <td>${result.regatta_name}</td>
+                  <td class="date-cell">${formatDate(result.regatta_date)}</td>
+                </tr>`;
+              });
+            
+            html += '</table>';
+            break;
+
+          case 'regatta_results':
+            html += `<h3>${data.regattaName}</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Skipper</th>
+                <th>Club</th>
+                <th>Boat</th>
+                <th>Results</th>
+                <th class="numeric-cell">Points</th>
+              </tr>`;
+            
+            data.results.forEach(result => {
+              html += `<tr>
+                <td class="numeric-cell">${result.position}</td>
+                <td>${result.skipper}</td>
+                <td>${result.yacht_club || '-'}</td>
+                <td>${result.boat_name || '-'}</td>
+                <td>${result.results || '-'}</td>
+                <td class="numeric-cell">${result.total_points || '-'}</td>
+              </tr>`;
+            });
+            
+            html += '</table>';
+            break;
+
+          case 'club_skippers':
+            html += `<h3>Skippers from ${data.clubName}</h3>
+            <table class="data-table">
+              <tr>
+                <th>Skipper</th>
+                <th class="numeric-cell">Total Races</th>
+                <th class="numeric-cell">Avg Position</th>
+                <th class="numeric-cell">Podiums</th>
+                <th class="numeric-cell">Best Position</th>
+                <th>Last Race</th>
+              </tr>`;
+            
+            data.results.forEach(result => {
+              html += `<tr>
+                <td>${result.skipper}</td>
+                <td class="numeric-cell">${result.total_races}</td>
+                <td class="numeric-cell">${Number(result.avg_position).toFixed(2)}</td>
+                <td class="numeric-cell">${result.podium_finishes || 0}</td>
+                <td class="numeric-cell">${result.best_position || '-'}</td>
+                <td class="date-cell">${formatDate(result.last_race_date)}</td>
+              </tr>`;
+            });
+            
+            html += '</table>';
+            break;
+        }
+
+        html += `<button class="download-button" onclick="downloadTableData(this)">
+          <i class="fas fa-download"></i> Download Results
+        </button>`;
+        html += '</div>';
+        return html;
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toISOString().split('T')[0];
+      }
+
+      function downloadTableData(button) {
+        const table = button.parentElement.querySelector('.data-table');
+        let csv = [];
+        
+        // Get headers
+        const headers = [];
+        table.querySelectorAll('th').forEach(th => headers.push(th.textContent));
+        csv.push(headers.join(','));
+        
+        // Get data rows
+        table.querySelectorAll('tr').forEach(tr => {
+          if (!tr.querySelector('th')) { // Skip header row
+            const row = [];
+            tr.querySelectorAll('td').forEach(td => {
+              row.push(`"${td.textContent.replace(/"/g, '""')}"`);
+            });
+            csv.push(row.join(','));
+          }
+        });
+        
+        // Create and trigger download
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'sailing_results.csv');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }
 
       // When the page loads, add the welcome message
