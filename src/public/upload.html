@@ -457,9 +457,11 @@
           return;
         }
 
-        const status = document.getElementById('status');
-        status.textContent = 'Clearing database...';
-        status.className = 'status';
+        const status = document.getElementById('uploadStatusContainer');
+        const statusText = document.getElementById('uploadStatus');
+        status.classList.remove('hidden');
+        statusText.textContent = 'Clearing database...';
+        statusText.className = 'status';
 
         try {
           const response = await fetch('/api/upload/clear', {
@@ -468,14 +470,19 @@
           const data = await response.json();
           
           if (data.success) {
-            status.textContent = 'Database cleared successfully';
-            status.className = 'status success';
+            statusText.textContent = `Database cleared successfully. ${data.recordsDeleted} records were deleted.`;
+            statusText.className = 'status success';
+            
+            // Refresh the stats if they're visible
+            if (typeof updateDatabaseStats === 'function') {
+              await updateDatabaseStats();
+            }
           } else {
-            throw new Error(data.error || 'Failed to clear database');
+            throw new Error(data.message || 'Failed to clear database');
           }
         } catch (error) {
-          status.textContent = `Error: ${error.message}`;
-          status.className = 'status error';
+          statusText.textContent = `Error: ${error.message}`;
+          statusText.className = 'status error';
         }
       });
     });

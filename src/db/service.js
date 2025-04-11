@@ -267,14 +267,32 @@ class RegattaService {
 
   // Clear all records from the database
   async clearDatabase() {
-    const query = 'TRUNCATE TABLE RegattaNetworkData RESTART IDENTITY CASCADE';
-    
+    const client = await pool.connect();
     try {
-      await pool.query(query);
-      return true;
+      await client.query('BEGIN');
+      
+      // Get the count of records before deletion
+      const countResult = await client.query('SELECT COUNT(*) FROM RegattaNetworkData');
+      const recordCount = parseInt(countResult.rows[0].count);
+      
+      // Delete all records
+      await client.query('TRUNCATE TABLE RegattaNetworkData RESTART IDENTITY');
+      
+      await client.query('COMMIT');
+      
+      return {
+        success: true,
+        recordsDeleted: recordCount
+      };
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error('Error clearing database:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
+    } finally {
+      client.release();
     }
   }
 }

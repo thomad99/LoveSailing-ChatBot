@@ -79,12 +79,23 @@ router.post('/', upload.single('csvFile'), async (req, res) => {
 // Add new route for clearing database
 router.post('/clear', async (req, res) => {
   try {
-    const regattaService = new RegattaService();
-    await regattaService.clearDatabase();
-    res.json({ success: true, message: 'Database cleared successfully' });
+    const result = await regattaService.clearDatabase();
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: 'Database cleared successfully',
+        recordsDeleted: result.recordsDeleted 
+      });
+    } else {
+      throw new Error('Failed to clear database');
+    }
   } catch (error) {
     console.error('Error clearing database:', error);
-    res.status(500).json({ success: false, error: 'Failed to clear database' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to clear database',
+      message: error.message 
+    });
   }
 });
 
