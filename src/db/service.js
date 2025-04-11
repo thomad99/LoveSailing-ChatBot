@@ -205,15 +205,67 @@ class RegattaService {
   
   // Get regatta results
   async getRegattaResults(regattaName) {
-    const query = `
-      SELECT * FROM RegattaNetworkData
-      WHERE regatta_name ILIKE $1
-      ORDER BY position ASC
+    // First try exact match
+    const exactQuery = `
+      SELECT 
+        position,
+        skipper,
+        yacht_club,
+        boat_name,
+        sail_number,
+        results,
+        total_points,
+        regatta_date,
+        category,
+        regatta_name
+      FROM RegattaNetworkData
+      WHERE LOWER(regatta_name) = LOWER($1)
+      ORDER BY 
+        CASE 
+          WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER)
+          ELSE 999999
+        END ASC,
+        position ASC
     `;
-    
+
     try {
-      const result = await pool.query(query, [`%${regattaName}%`]);
-      return result.rows;
+      // Try exact match first
+      const exactResult = await pool.query(exactQuery, [regattaName]);
+      
+      if (exactResult.rows.length > 0) {
+        return exactResult.rows;
+      }
+      
+      // If no exact match, try fuzzy match
+      const fuzzyQuery = `
+        SELECT 
+          position,
+          skipper,
+          yacht_club,
+          boat_name,
+          sail_number,
+          results,
+          total_points,
+          regatta_date,
+          category,
+          regatta_name
+        FROM RegattaNetworkData
+        WHERE LOWER(regatta_name) LIKE LOWER($1)
+        ORDER BY 
+          CASE 
+            WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER)
+            ELSE 999999
+          END ASC,
+          position ASC
+      `;
+      
+      const fuzzyResult = await pool.query(fuzzyQuery, [`%${regattaName}%`]);
+      
+      if (fuzzyResult.rows.length === 0) {
+        console.log('No results found for regatta:', regattaName);
+      }
+      
+      return fuzzyResult.rows;
     } catch (error) {
       console.error('Error getting regatta results:', error);
       throw error;
@@ -293,6 +345,49 @@ class RegattaService {
       };
     } finally {
       client.release();
+    }
+  }
+
+  // Get all skippers from a club
+  async getClubSkippers(clubName) {
+    const query = `
+      SELECT DISTINCT 
+        skipper,
+        yacht_club,
+        COUNT(*) as total_races,
+        AVG(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as avg_position,
+        COUNT(CASE WHEN position ~ '^[0-9]+$' AND CAST(position AS INTEGER) <= 3 THEN 1 END) as podium_finishes,
+        MIN(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as best_position,
+        MAX(regatta_date) as last_race_date
+      FROM RegattaNetworkData
+      WHERE 
+        yacht_club ILIKE $1 
+        OR yacht_club ILIKE $2
+        OR yacht_club ILIKE $3
+        OR yacht_club ILIKE $4
+      GROUP BY skipper, yacht_club
+      ORDER BY 
+        total_races DESC,
+        avg_position ASC NULLS LAST
+    `;
+
+    try {
+      // Handle common abbreviations and variations
+      const result = await pool.query(query, [
+        `%${clubName}%`,                    // Partial match
+        `%${clubName.toUpperCase()}%`,      // Uppercase variation
+        `%${clubName.toLowerCase()}%`,      // Lowercase variation
+        `%${clubName.replace(/\s+/g, '')}%` // No spaces variation
+      ]);
+
+      if (result.rows.length === 0) {
+        console.log('No skippers found for club:', clubName);
+      }
+
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting club skippers:', error);
+      throw error;
     }
   }
 }

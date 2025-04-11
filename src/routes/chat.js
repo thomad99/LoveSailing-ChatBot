@@ -29,6 +29,14 @@ router.post('/', async (req, res) => {
         };
         break;
         
+      case 'club_skippers':
+        const clubResults = await regattaService.getClubSkippers(queryData.clubName);
+        data = {
+          clubName: queryData.clubName,
+          results: clubResults
+        };
+        break;
+        
       case 'boat_search':
         const boatResults = await regattaService.searchRecords({ boat_name: queryData.boatName });
         data = {
