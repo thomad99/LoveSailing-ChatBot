@@ -355,9 +355,20 @@ class RegattaService {
         skipper,
         yacht_club,
         COUNT(*) as total_races,
-        AVG(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as avg_position,
-        COUNT(CASE WHEN position ~ '^[0-9]+$' AND CAST(position AS INTEGER) <= 3 THEN 1 END) as podium_finishes,
-        MIN(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as best_position,
+        AVG(CASE 
+          WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER)
+          WHEN position IS NULL THEN NULL
+          ELSE NULL
+        END) as avg_position,
+        COUNT(CASE 
+          WHEN position ~ '^[0-9]+$' AND CAST(position AS INTEGER) <= 3 THEN 1
+          ELSE NULL
+        END) as podium_finishes,
+        MIN(CASE 
+          WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER)
+          WHEN position IS NULL THEN NULL
+          ELSE NULL
+        END) as best_position,
         MAX(regatta_date) as last_race_date
       FROM RegattaNetworkData
       WHERE 

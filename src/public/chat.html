@@ -565,35 +565,62 @@
       }
 
       function downloadTableData(button) {
-        const table = button.parentElement.querySelector('.data-table');
+        const dataSection = button.parentElement;
+        const tables = dataSection.querySelectorAll('.data-table');
         let csv = [];
         
-        // Get headers
-        const headers = [];
-        table.querySelectorAll('th').forEach(th => headers.push(th.textContent));
-        csv.push(headers.join(','));
-        
-        // Get data rows
-        table.querySelectorAll('tr').forEach(tr => {
-          if (!tr.querySelector('th')) { // Skip header row
-            const row = [];
-            tr.querySelectorAll('td').forEach(td => {
-              row.push(`"${td.textContent.replace(/"/g, '""')}"`);
-            });
-            csv.push(row.join(','));
+        // Process each table in the data section
+        tables.forEach((table, index) => {
+          // Add a separator between multiple tables
+          if (index > 0) {
+            csv.push(''); // Empty line between tables
           }
+          
+          // Get table title if available
+          const title = table.previousElementSibling;
+          if (title && title.tagName === 'H3') {
+            csv.push(title.textContent);
+            csv.push(''); // Empty line after title
+          }
+          
+          // Get headers
+          const headers = [];
+          table.querySelectorAll('th').forEach(th => headers.push(th.textContent));
+          csv.push(headers.join(','));
+          
+          // Get data rows
+          table.querySelectorAll('tr').forEach(tr => {
+            if (!tr.querySelector('th')) { // Skip header row
+              const row = [];
+              tr.querySelectorAll('td').forEach(td => {
+                // Clean and escape the cell content
+                const content = td.textContent.trim();
+                row.push(`"${content.replace(/"/g, '""')}"`);
+              });
+              csv.push(row.join(','));
+            }
+          });
         });
         
         // Create and trigger download
-        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', 'sailing_results.csv');
+        
+        // Generate a meaningful filename based on the content
+        let filename = 'sailing_results';
+        const title = dataSection.querySelector('h3');
+        if (title) {
+          filename = title.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        }
+        a.setAttribute('download', `${filename}.csv`);
+        
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
       }
 
       // When the page loads, add the welcome message
