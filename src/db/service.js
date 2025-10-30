@@ -281,11 +281,7 @@ class RegattaService {
         COUNT(DISTINCT regatta_name) as total_regattas,
         COUNT(DISTINCT yacht_club) as total_clubs,
         MIN(regatta_date) as earliest_date,
-        MAX(regatta_date) as latest_date,
-        (SELECT COUNT(*) FROM RegattaNetworkData 
-         WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
-         AND boat_name NOT IN (SELECT boat_name FROM RegattaNetworkData WHERE boat_name = skipper)) 
-         as potential_name_mismatches
+        MAX(regatta_date) as latest_date
       FROM RegattaNetworkData
     `;
     
@@ -402,7 +398,7 @@ class RegattaService {
     }
   }
 
-  // Get detailed data quality report for potential name mismatches
+  // Get detailed database report with various insights
   async getDataQualityReport(limit = 100) {
     try {
       // Get summary statistics
@@ -412,23 +408,34 @@ class RegattaService {
           COUNT(DISTINCT skipper) as total_sailors,
           COUNT(DISTINCT regatta_name) as total_regattas,
           COUNT(DISTINCT yacht_club) as total_clubs,
-          (SELECT COUNT(*) FROM RegattaNetworkData 
-           WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
-           AND boat_name != skipper 
-           AND LOWER(boat_name) NOT LIKE '%boat%'
-           AND LOWER(boat_name) NOT LIKE '%ship%'
-           AND LOWER(boat_name) NOT LIKE '%yacht%'
-           AND LOWER(boat_name) NOT LIKE '%sail%'
-           AND LOWER(boat_name) NOT IN ('unknown', 'n/a', 'tbd', 'none')) 
-           as potential_issues_count
+          MIN(regatta_date) as earliest_date,
+          MAX(regatta_date) as latest_date,
+          COUNT(*) FILTER (WHERE skipper IS NULL OR skipper = '') as missing_skippers,
+          COUNT(*) FILTER (WHERE boat_name IS NULL OR boat_name = '') as missing_boat_names
         FROM RegattaNetworkData
       `;
       
       const summaryResult = await pool.query(summaryQuery);
       const summary = summaryResult.rows[0];
 
-      // Get detailed examples of potential issues
-      const detailsQuery = `
+      // Get most active sailors
+      const topSailorsQuery = `
+        SELECT 
+          skipper,
+          yacht_club,
+          COUNT(*) as race_count,
+          AVG(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as avg_position
+        FROM RegattaNetworkData
+        WHERE skipper IS NOT NULL AND skipper != ''
+        GROUP BY skipper, yacht_club
+        ORDER BY race_count DESC
+        LIMIT $1
+      `;
+      
+      const topSailorsResult = await pool.query(topSailorsQuery, [20]);
+      
+      // Get most recent records
+      const recentRecordsQuery = `
         SELECT 
           id,
           regatta_name,
@@ -436,44 +443,13 @@ class RegattaService {
           skipper,
           boat_name,
           yacht_club,
-          sail_number,
-          position,
-          category
+          position
         FROM RegattaNetworkData 
-        WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
-          AND boat_name != skipper 
-          AND LOWER(boat_name) NOT LIKE '%boat%'
-          AND LOWER(boat_name) NOT LIKE '%ship%'
-          AND LOWER(boat_name) NOT LIKE '%yacht%'
-          AND LOWER(boat_name) NOT LIKE '%sail%'
-          AND LOWER(boat_name) NOT IN ('unknown', 'n/a', 'tbd', 'none')
-        ORDER BY regatta_date DESC, regatta_name
+        ORDER BY regatta_date DESC, id DESC
         LIMIT $1
       `;
       
-      const detailsResult = await pool.query(detailsQuery, [limit]);
-      
-      // Analyze patterns
-      const patternQuery = `
-        SELECT 
-          boat_name,
-          COUNT(*) as occurrence_count,
-          COUNT(DISTINCT regatta_name) as regattas_affected,
-          STRING_AGG(DISTINCT skipper, ', ' ORDER BY skipper) as sample_skippers
-        FROM RegattaNetworkData 
-        WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
-          AND boat_name != skipper 
-          AND LOWER(boat_name) NOT LIKE '%boat%'
-          AND LOWER(boat_name) NOT LIKE '%ship%'
-          AND LOWER(boat_name) NOT LIKE '%yacht%'
-          AND LOWER(boat_name) NOT LIKE '%sail%'
-          AND LOWER(boat_name) NOT IN ('unknown', 'n/a', 'tbd', 'none')
-        GROUP BY boat_name
-        ORDER BY occurrence_count DESC
-        LIMIT 20
-      `;
-      
-      const patternResult = await pool.query(patternQuery);
+      const recentRecordsResult = await pool.query(recentRecordsQuery, [limit]);
 
       return {
         summary: {
@@ -481,13 +457,16 @@ class RegattaService {
           total_sailors: parseInt(summary.total_sailors),
           total_regattas: parseInt(summary.total_regattas),
           total_clubs: parseInt(summary.total_clubs),
-          potential_issues_count: parseInt(summary.potential_issues_count)
+          earliest_date: summary.earliest_date,
+          latest_date: summary.latest_date,
+          missing_skippers: parseInt(summary.missing_skippers || 0),
+          missing_boat_names: parseInt(summary.missing_boat_names || 0)
         },
-        sample_issues: detailsResult.rows,
-        top_patterns: patternResult.rows
+        top_sailors: topSailorsResult.rows,
+        recent_records: recentRecordsResult.rows
       };
     } catch (error) {
-      console.error('Error generating data quality report:', error);
+      console.error('Error generating database report:', error);
       throw error;
     }
   }

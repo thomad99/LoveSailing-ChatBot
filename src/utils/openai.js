@@ -200,7 +200,7 @@ Format the response as follows:
    If more than 15 competitors, show only top 15 and add total count at bottom.`;
         break;
       case 'database_status':
-        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nProvide only the key statistics as bullet points showing total records, sailors, regattas, and clubs with their counts. If potential_name_mismatches exists and is greater than 0, mention that there are potentially X sailor names incorrectly stored in the boat_name column.`;
+        contextPrompt = `Here are the current database statistics:\n${JSON.stringify(data, null, 2)}\n\nProvide only the key statistics as bullet points showing total records, sailors, regattas, and clubs with their counts.`;
         break;
       case 'regatta_count':
         contextPrompt = `Here are the regattas that took place in ${data.year}:\n${JSON.stringify(data.results, null, 2)}\n\nList only regatta names, dates, and participant counts in a compact tabular format.`;

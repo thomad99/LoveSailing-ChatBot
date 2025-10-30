@@ -217,8 +217,8 @@
   
   <div class="container">
     <div class="header">
-      <h1><i class="fas fa-chart-line"></i> Data Quality Report</h1>
-      <p>Analysis of potential sailor names stored in the boat_name column</p>
+      <h1><i class="fas fa-chart-line"></i> Database Overview Report</h1>
+      <p>Comprehensive statistics and insights from your sailing database</p>
       <div class="button-group">
         <button onclick="loadReport()"><i class="fas fa-sync-alt"></i> Refresh Report</button>
         <button onclick="exportReport()"><i class="fas fa-download"></i> Export to CSV</button>
@@ -235,35 +235,36 @@
       <!-- Summary Stats -->
       <div class="stats-grid" id="stats-grid"></div>
       
-      <!-- Warning Card -->
+      <!-- Data Quality Issues -->
       <div class="warning-card" id="warning-card" style="display: none;">
-        <h2><i class="fas fa-exclamation-triangle"></i> Potential Data Issues Detected</h2>
+        <h2><i class="fas fa-exclamation-triangle"></i> Data Quality Issues Detected</h2>
         <p id="warning-text"></p>
       </div>
       
-      <!-- Top Patterns -->
-      <div class="section" id="patterns-section" style="display: none;">
-        <h2><i class="fas fa-search"></i> Most Common Patterns</h2>
+      <!-- Top Sailors -->
+      <div class="section" id="top-sailors-section" style="display: none;">
+        <h2><i class="fas fa-users"></i> Most Active Sailors</h2>
         <div style="overflow-x: auto;">
-          <table id="patterns-table">
+          <table id="top-sailors-table">
             <thead>
               <tr>
-                <th>Boat Name (Potential Sailor)</th>
-                <th>Occurrences</th>
-                <th>Regattas Affected</th>
-                <th>Sample Skippers</th>
+                <th>Rank</th>
+                <th>Skipper</th>
+                <th>Club</th>
+                <th>Total Races</th>
+                <th>Avg Position</th>
               </tr>
             </thead>
-            <tbody id="patterns-tbody"></tbody>
+            <tbody id="top-sailors-tbody"></tbody>
           </table>
         </div>
       </div>
       
-      <!-- Sample Issues -->
-      <div class="section" id="samples-section" style="display: none;">
-        <h2><i class="fas fa-list"></i> Sample Problematic Records</h2>
+      <!-- Recent Records -->
+      <div class="section" id="recent-records-section" style="display: none;">
+        <h2><i class="fas fa-clock"></i> Most Recent Records</h2>
         <div style="overflow-x: auto;">
-          <table id="samples-table">
+          <table id="recent-records-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -275,7 +276,7 @@
                 <th>Position</th>
               </tr>
             </thead>
-            <tbody id="samples-tbody"></tbody>
+            <tbody id="recent-records-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -322,6 +323,11 @@
       // Display summary stats
       const summary = data.summary;
       const statsGrid = document.getElementById('stats-grid');
+      
+      // Format dates
+      const earliestDate = summary.earliest_date ? new Date(summary.earliest_date).toLocaleDateString() : '-';
+      const latestDate = summary.latest_date ? new Date(summary.latest_date).toLocaleDateString() : '-';
+      
       statsGrid.innerHTML = `
         <div class="stat-card">
           <h3>Total Records</h3>
@@ -339,42 +345,59 @@
           <h3>Total Clubs</h3>
           <div class="value">${summary.total_clubs.toLocaleString()}</div>
         </div>
+        <div class="stat-card">
+          <h3>Earliest Race</h3>
+          <div class="value" style="font-size: 20px;">${earliestDate}</div>
+        </div>
+        <div class="stat-card">
+          <h3>Latest Race</h3>
+          <div class="value" style="font-size: 20px;">${latestDate}</div>
+        </div>
       `;
       
-      // Display warning if issues found
-      if (summary.potential_issues_count > 0) {
+      // Display warning if missing data found
+      if (summary.missing_skippers > 0 || summary.missing_boat_names > 0) {
         const warningCard = document.getElementById('warning-card');
         const warningText = document.getElementById('warning-text');
-        warningText.textContent = `There are potentially ${summary.potential_issues_count.toLocaleString()} records where sailor names appear to be incorrectly stored in the boat_name column. Review the patterns and samples below to verify.`;
+        let issues = [];
+        if (summary.missing_skippers > 0) {
+          issues.push(`${summary.missing_skippers.toLocaleString()} missing skippers`);
+        }
+        if (summary.missing_boat_names > 0) {
+          issues.push(`${summary.missing_boat_names.toLocaleString()} missing boat names`);
+        }
+        warningText.textContent = `Found ${issues.join(' and ')}. Consider filling in these missing fields for better data quality.`;
         warningCard.style.display = 'block';
       } else {
         document.getElementById('warning-card').style.display = 'none';
       }
       
-      // Display top patterns
-      if (data.top_patterns && data.top_patterns.length > 0) {
-        const patternsTbody = document.getElementById('patterns-tbody');
-        patternsTbody.innerHTML = '';
-        data.top_patterns.forEach(pattern => {
+      // Display top sailors
+      if (data.top_sailors && data.top_sailors.length > 0) {
+        const topSailorsTbody = document.getElementById('top-sailors-tbody');
+        topSailorsTbody.innerHTML = '';
+        data.top_sailors.forEach((sailor, index) => {
           const row = document.createElement('tr');
+          const avgPos = sailor.avg_position ? parseFloat(sailor.avg_position).toFixed(2) : '-';
           row.innerHTML = `
-            <td class="highlight">${pattern.boat_name}</td>
-            <td>${pattern.occurrence_count}</td>
-            <td>${pattern.regattas_affected}</td>
-            <td>${pattern.sample_skippers || '-'}</td>
+            <td>${index + 1}</td>
+            <td>${sailor.skipper || '-'}</td>
+            <td>${sailor.yacht_club || '-'}</td>
+            <td>${sailor.race_count}</td>
+            <td>${avgPos}</td>
           `;
-          patternsTbody.appendChild(row);
+          topSailorsTbody.appendChild(row);
         });
-        document.getElementById('patterns-section').style.display = 'block';
+        document.getElementById('top-sailors-section').style.display = 'block';
       } else {
-        document.getElementById('patterns-section').style.display = 'none';
+        document.getElementById('top-sailors-section').style.display = 'none';
       }
       
-      // Display sample issues
-      if (data.sample_issues && data.sample_issues.length > 0) {
-        const samplesTbody = document.getElementById('samples-tbody');
-        samplesTbody.innerHTML = '';
-        data.sample_issues.forEach(record => {
+      // Display recent records
+      if (data.recent_records && data.recent_records.length > 0) {
+        const recentRecordsTbody = document.getElementById('recent-records-tbody');
+        recentRecordsTbody.innerHTML = '';
+        data.recent_records.forEach(record => {
           const row = document.createElement('tr');
           const date = record.regatta_date ? new Date(record.regatta_date).toLocaleDateString() : '-';
           row.innerHTML = `
@@ -382,15 +405,15 @@
             <td>${record.regatta_name || '-'}</td>
             <td>${date}</td>
             <td>${record.skipper || '-'}</td>
-            <td class="highlight">${record.boat_name || '-'}</td>
+            <td>${record.boat_name || '-'}</td>
             <td>${record.yacht_club || '-'}</td>
             <td>${record.position || '-'}</td>
           `;
-          samplesTbody.appendChild(row);
+          recentRecordsTbody.appendChild(row);
         });
-        document.getElementById('samples-section').style.display = 'block';
+        document.getElementById('recent-records-section').style.display = 'block';
       } else {
-        document.getElementById('samples-section').style.display = 'none';
+        document.getElementById('recent-records-section').style.display = 'none';
       }
     }
     
@@ -401,25 +424,29 @@
       }
       
       // Create CSV content
-      let csv = 'Data Quality Report\n\n';
+      let csv = 'Database Overview Report\n\n';
       csv += `Total Records,${reportData.summary.total_records}\n`;
       csv += `Total Sailors,${reportData.summary.total_sailors}\n`;
       csv += `Total Regattas,${reportData.summary.total_regattas}\n`;
       csv += `Total Clubs,${reportData.summary.total_clubs}\n`;
-      csv += `Potential Issues,${reportData.summary.potential_issues_count}\n\n`;
+      csv += `Earliest Date,${reportData.summary.earliest_date || '-'}\n`;
+      csv += `Latest Date,${reportData.summary.latest_date || '-'}\n`;
+      csv += `Missing Skippers,${reportData.summary.missing_skippers || 0}\n`;
+      csv += `Missing Boat Names,${reportData.summary.missing_boat_names || 0}\n\n`;
       
-      // Export patterns
-      csv += 'Top Patterns\n';
-      csv += 'Boat Name,Occurrences,Regattas Affected,Sample Skippers\n';
-      reportData.top_patterns.forEach(pattern => {
-        csv += `"${pattern.boat_name}",${pattern.occurrence_count},${pattern.regattas_affected},"${pattern.sample_skippers || '-'}"\n`;
+      // Export top sailors
+      csv += 'Top Sailors\n';
+      csv += 'Rank,Skipper,Club,Total Races,Avg Position\n';
+      reportData.top_sailors.forEach((sailor, index) => {
+        const avgPos = sailor.avg_position ? parseFloat(sailor.avg_position).toFixed(2) : '-';
+        csv += `${index + 1},"${sailor.skipper || '-'}","${sailor.yacht_club || '-'}",${sailor.race_count},${avgPos}\n`;
       });
       csv += '\n';
       
-      // Export sample issues
-      csv += 'Sample Problematic Records\n';
+      // Export recent records
+      csv += 'Recent Records\n';
       csv += 'ID,Regatta,Date,Skipper,Boat Name,Club,Position\n';
-      reportData.sample_issues.forEach(record => {
+      reportData.recent_records.forEach(record => {
         const date = record.regatta_date ? new Date(record.regatta_date).toLocaleDateString() : '-';
         csv += `${record.id},"${record.regatta_name || '-'}",${date},"${record.skipper || '-'}","${record.boat_name || '-'}","${record.yacht_club || '-'}",${record.position || '-'}\n`;
       });
@@ -429,7 +456,7 @@
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `data-quality-report-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `database-report-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
