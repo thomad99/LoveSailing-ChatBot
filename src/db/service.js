@@ -459,7 +459,7 @@ class RegattaService {
           boat_name,
           COUNT(*) as occurrence_count,
           COUNT(DISTINCT regatta_name) as regattas_affected,
-          STRING_AGG(DISTINCT skipper, ', ' ORDER BY skipper LIMIT 5) as sample_skippers
+          STRING_AGG(DISTINCT skipper, ', ' ORDER BY skipper) as sample_skippers
         FROM RegattaNetworkData 
         WHERE boat_name ~ '[A-Z][a-z]+ [A-Z][a-z]+' 
           AND boat_name != skipper 
