@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sailing Chatbot</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f8ff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .logo-container {
+      background-color: #020053;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 0;
+    }
+    
+    .logo-container img {
+      max-width: 350px;
+      height: auto;
+    }
+    
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 10px 10px 0 0;
+      min-height: 400px;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+      border-radius: 10px;
+      padding: 12px;
+      max-width: 85%;
+      position: relative;
+    }
+    
+    .message:after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      transform: rotate(45deg);
+      bottom: -6px;
+    }
+    
+    .message ul {
+      margin: 5px 0 5px 0;
+      padding-left: 20px;
+    }
+    
+    .message li {
+      margin: 5px 0;
+      list-style-type: disc;
+    }
+    
+    .message table {
+      border-collapse: collapse;
+      margin: 10px 0;
+      width: 100%;
+    }
+    
+    .message table th, 
+    .message table td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+    }
+    
+    .message table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    
+    .message table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    
+    .message pre {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    
+    .message code {
+      font-family: monospace;
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    
+    .message strong {
+      font-weight: bold;
+      color: #004080;
+    }
+    
+    .message strong.name {
+      background-color: rgba(0, 64, 128, 0.1);
+      padding: 0 3px;
+      border-radius: 3px;
+      font-weight: bold;
+      color: #004080;
+    }
+    
+    .user-message {
+      background-color: #e6f7ff;
+      margin-left: auto;
+      border-bottom-right-radius: 0;
+    }
+    
+    .user-message:after {
+      background-color: #e6f7ff;
+      right: 10px;
+    }
+    
+    .bot-message {
+      background-color: #f0f0f0;
+      margin-right: auto;
+      border-bottom-left-radius: 0;
+    }
+    
+    .bot-message:after {
+      background-color: #f0f0f0;
+      left: 10px;
+    }
+    
+    .message-content {
+      word-break: break-word;
+    }
+    
+    .message-content p {
+      margin: 0 0 10px 0;
+    }
+    
+    .message-content p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 0 0 10px 10px;
+      border: 1px solid #ddd;
+      border-top: none;
+    }
+    
+    #userInput {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    
+    #sendButton {
+      padding: 10px 20px;
+      background-color: #004080;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    #sendButton:hover {
+      background-color: #00305f;
+    }
+    
+    .typing-indicator {
+      display: none;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      max-width: 85%;
+      margin-right: auto;
+    }
+    
+    .typing-indicator span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background-color: #888;
+      border-radius: 50%;
+      margin-right: 5px;
+      animation: typing 1s infinite;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+    
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .logo-container img {
+        max-width: 250px;
+      }
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .data-table th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .data-table tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .data-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .data-section h3 {
+      margin: 0 0 15px 0;
+      color: #0056b3;
+      font-size: 1.2em;
+      border-bottom: 2px solid #0078ff;
+      padding-bottom: 5px;
+      display: inline-block;
+    }
+
+    .numeric-cell {
+      text-align: right;
+      font-family: 'Consolas', monospace;
+    }
+
+    .date-cell {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .message.bot-message .data-section {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .download-button {
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .download-button:hover {
+      background-color: #0056b3;
+    }
+
+    .message-content {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="img/LoveSailing-Wide.jpg" alt="LoveSailing.AI" onerror="this.onerror=''; this.src='https://img.icons8.com/fluency/96/sail-boat.png';">
+  </div>
+  
+  <div class="container" style="position: relative;">
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
+      <a href="/report" style="background-color: #020053; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none; font-size: 14px;">
+        <i class="fas fa-chart-line"></i> View Data Quality Report
+      </a>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages will be added here dynamically -->
+    </div>
+    <div class="typing-indicator" id="typingIndicator">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Ask me about sailing competitions...">
+      <button id="sendButton">Send</button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const chatMessages = document.getElementById('chatMessages');
+      const userInput = document.getElementById('userInput');
+      const sendButton = document.getElementById('sendButton');
+      const typingIndicator = document.getElementById('typingIndicator');
+      
+      // Add event listener for the send button
+      sendButton.addEventListener('click', function() {
+        sendMessage();
+      });
+      
+      // Add event listener for the enter key
+      userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // Prevent default to avoid new line in input
+          sendMessage();
+        }
+      });
+      
+      // Function to send a message
+      function sendMessage() {
+        const message = userInput.value.trim();
+        
+        if (message === '') return;
+        
+        // Add user message to chat
+        addMessageToChat(message, true);
+        
+        // Clear input
+        userInput.value = '';
+        
+        // Show typing indicator
+        typingIndicator.style.display = 'flex';
+        
+        // Send message to server
+        fetchBotResponse(message);
+      }
+      
+      // Function to add message to the chat
+      function addMessageToChat(content, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        if (!isUser && window.lastQueryType && window.lastQueryData) {
+          const tableHtml = formatDataAsTable(window.lastQueryData, window.lastQueryType);
+          if (tableHtml) {
+            messageContent.innerHTML = tableHtml;
+          } else {
+            messageContent.textContent = content;
+          }
+        } else {
+          messageContent.textContent = content;
+        }
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // Function to fetch bot response from server
+      async function fetchBotResponse(message) {
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: message }),
+          });
+          
+          const data = await response.json();
+          
+          // Store the query type and data for table formatting
+          window.lastQueryType = data.queryType;
+          window.lastQueryData = data.data;
+          
+          // Hide typing indicator
+          typingIndicator.style.display = 'none';
+          
+          // Add bot response
+          addMessageToChat(data.response);
+          
+        } catch (error) {
+          console.error('Error:', error);
+          
+          // Hide typing indicator
+          typingIndicator.style.display = 'none';
+          
+          // Add error message
+          addMessageToChat('Sorry, I encountered an error. Please try again.');
+        }
+      }
+
+      function formatDataAsTable(data, type) {
+        if (!data || !data.results || data.results.length === 0) return null;
+
+        let html = '<div class="data-section">';
+        
+        switch (type) {
+          case 'sailor_search':
+            html += `<h3>Basic Info</h3>
+            <table class="data-table">
+              <tr>
+                <th>Name</th>
+                <th>Club</th>
+              </tr>
+              <tr>
+                <td>${data.skipper}</td>
+                <td>${data.results[0].yacht_club || '-'}</td>
+              </tr>
+            </table>
+
+            <h3>Top Achievements</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Regatta Name</th>
+                <th>Date</th>
+              </tr>`;
+            
+            // Filter and sort top achievements (positions 1-3)
+            const topAchievements = data.results
+              .filter(r => !isNaN(r.position) && r.position <= 3)
+              .sort((a, b) => a.position - b.position);
+            
+            topAchievements.forEach(result => {
+              html += `<tr>
+                <td class="numeric-cell">${result.position}</td>
+                <td>${result.regatta_name}</td>
+                <td class="date-cell">${formatDate(result.regatta_date)}</td>
+              </tr>`;
+            });
+            
+            html += `</table>
+
+            <h3>Recent Race History</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Regatta Name</th>
+                <th>Date</th>
+              </tr>`;
+            
+            // Sort by date descending
+            data.results
+              .sort((a, b) => new Date(b.regatta_date) - new Date(a.regatta_date))
+              .slice(0, 10)
+              .forEach(result => {
+                html += `<tr>
+                  <td class="numeric-cell">${result.position}</td>
+                  <td>${result.regatta_name}</td>
+                  <td class="date-cell">${formatDate(result.regatta_date)}</td>
+                </tr>`;
+              });
+            
+            html += '</table>';
+            break;
+
+          case 'regatta_results':
+            html += `<h3>${data.regattaName}</h3>
+            <table class="data-table">
+              <tr>
+                <th>Position</th>
+                <th>Skipper</th>
+                <th>Club</th>
+                <th>Boat</th>
+                <th>Results</th>
+                <th class="numeric-cell">Points</th>
+              </tr>`;
+            
+            data.results.forEach(result => {
+              html += `<tr>
+                <td class="numeric-cell">${result.position}</td>
+                <td>${result.skipper}</td>
+                <td>${result.yacht_club || '-'}</td>
+                <td>${result.boat_name || '-'}</td>
+                <td>${result.results || '-'}</td>
+                <td class="numeric-cell">${result.total_points || '-'}</td>
+              </tr>`;
+            });
+            
+            html += '</table>';
+            break;
+
+          case 'club_skippers':
+            html += `<h3>Skippers from ${data.clubName}</h3>
+            <table class="data-table">
+              <tr>
+                <th>Skipper</th>
+                <th class="numeric-cell">Total Races</th>
+                <th class="numeric-cell">Avg Position</th>
+                <th class="numeric-cell">Podiums</th>
+                <th class="numeric-cell">Best Position</th>
+                <th>Last Race</th>
+              </tr>`;
+            
+            data.results.forEach(result => {
+              html += `<tr>
+                <td>${result.skipper}</td>
+                <td class="numeric-cell">${result.total_races}</td>
+                <td class="numeric-cell">${Number(result.avg_position).toFixed(2)}</td>
+                <td class="numeric-cell">${result.podium_finishes || 0}</td>
+                <td class="numeric-cell">${result.best_position || '-'}</td>
+                <td class="date-cell">${formatDate(result.last_race_date)}</td>
+              </tr>`;
+            });
+            
+            html += '</table>';
+            break;
+        }
+
+        html += `<button class="download-button" onclick="downloadTableData(this)">
+          <i class="fas fa-download"></i> Download Results
+        </button>`;
+        html += '</div>';
+        return html;
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toISOString().split('T')[0];
+      }
+
+      function downloadTableData(button) {
+        const dataSection = button.parentElement;
+        const tables = dataSection.querySelectorAll('.data-table');
+        let csv = [];
+        
+        // Process each table in the data section
+        tables.forEach((table, index) => {
+          // Add a separator between multiple tables
+          if (index > 0) {
+            csv.push(''); // Empty line between tables
+          }
+          
+          // Get table title if available
+          const title = table.previousElementSibling;
+          if (title && title.tagName === 'H3') {
+            csv.push(title.textContent);
+            csv.push(''); // Empty line after title
+          }
+          
+          // Get headers
+          const headers = [];
+          table.querySelectorAll('th').forEach(th => headers.push(th.textContent));
+          csv.push(headers.join(','));
+          
+          // Get data rows
+          table.querySelectorAll('tr').forEach(tr => {
+            if (!tr.querySelector('th')) { // Skip header row
+              const row = [];
+              tr.querySelectorAll('td').forEach(td => {
+                // Clean and escape the cell content
+                const content = td.textContent.trim();
+                row.push(`"${content.replace(/"/g, '""')}"`);
+              });
+              csv.push(row.join(','));
+            }
+          });
+        });
+        
+        // Create and trigger download
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        
+        // Generate a meaningful filename based on the content
+        let filename = 'sailing_results';
+        const title = dataSection.querySelector('h3');
+        if (title) {
+          filename = title.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        }
+        a.setAttribute('download', `${filename}.csv`);
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+
+      // When the page loads, add the welcome message
+      window.addEventListener('DOMContentLoaded', () => {
+        const welcomeMessage = `Welcome to LoveSailing.AI ChatBot, how can I help?`;
+        
+        addMessageToChat(welcomeMessage);
+        
+        // Hide typing indicator initially
+        typingIndicator.style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html> 

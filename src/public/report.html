@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Quality Report - Sailing Database</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f8ff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .logo-container {
+      background-color: #020053;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 0;
+    }
+    
+    .logo-container img {
+      max-width: 350px;
+      height: auto;
+    }
+    
+    .container {
+      flex: 1;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .header {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header h1 {
+      margin: 0 0 10px 0;
+      color: #020053;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .stat-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .stat-card .value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+    
+    .warning-card {
+      background-color: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    
+    .warning-card h2 {
+      color: #856404;
+      margin: 0 0 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .section {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section h2 {
+      color: #020053;
+      margin: 0 0 15px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f8ff;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    
+    table th {
+      background-color: #020053;
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+    
+    table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    
+    table tr:hover {
+      background-color: #f0f8ff;
+    }
+    
+    .highlight {
+      background-color: #fff3cd !important;
+      font-weight: bold;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #666;
+    }
+    
+    .error {
+      background-color: #f8d7da;
+      border: 2px solid #dc3545;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      background-color: #020053;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #040075;
+    }
+    
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .nav-links {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+    
+    .nav-links a {
+      color: #020053;
+      text-decoration: none;
+      margin-right: 20px;
+      display: inline-block;
+      padding: 8px 16px;
+      border: 2px solid #020053;
+      border-radius: 5px;
+      transition: all 0.3s;
+    }
+    
+    .nav-links a:hover {
+      background-color: #020053;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="img/LoveSailing-Wide.jpg" alt="Sailing Logo">
+  </div>
+  
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-chart-line"></i> Data Quality Report</h1>
+      <p>Analysis of potential sailor names stored in the boat_name column</p>
+      <div class="button-group">
+        <button onclick="loadReport()"><i class="fas fa-sync-alt"></i> Refresh Report</button>
+        <button onclick="exportReport()"><i class="fas fa-download"></i> Export to CSV</button>
+      </div>
+    </div>
+    
+    <div id="loading" class="loading">
+      <i class="fas fa-spinner fa-spin"></i> Loading report...
+    </div>
+    
+    <div id="error-container"></div>
+    
+    <div id="report-content" style="display: none;">
+      <!-- Summary Stats -->
+      <div class="stats-grid" id="stats-grid"></div>
+      
+      <!-- Warning Card -->
+      <div class="warning-card" id="warning-card" style="display: none;">
+        <h2><i class="fas fa-exclamation-triangle"></i> Potential Data Issues Detected</h2>
+        <p id="warning-text"></p>
+      </div>
+      
+      <!-- Top Patterns -->
+      <div class="section" id="patterns-section" style="display: none;">
+        <h2><i class="fas fa-search"></i> Most Common Patterns</h2>
+        <div style="overflow-x: auto;">
+          <table id="patterns-table">
+            <thead>
+              <tr>
+                <th>Boat Name (Potential Sailor)</th>
+                <th>Occurrences</th>
+                <th>Regattas Affected</th>
+                <th>Sample Skippers</th>
+              </tr>
+            </thead>
+            <tbody id="patterns-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Sample Issues -->
+      <div class="section" id="samples-section" style="display: none;">
+        <h2><i class="fas fa-list"></i> Sample Problematic Records</h2>
+        <div style="overflow-x: auto;">
+          <table id="samples-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Regatta</th>
+                <th>Date</th>
+                <th>Skipper</th>
+                <th>Boat Name</th>
+                <th>Club</th>
+                <th>Position</th>
+              </tr>
+            </thead>
+            <tbody id="samples-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="nav-links">
+        <a href="/chat"><i class="fas fa-comments"></i> Chat with Sailbot</a>
+        <a href="/upload"><i class="fas fa-upload"></i> Upload Data</a>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let reportData = null;
+    
+    async function loadReport() {
+      const loadingDiv = document.getElementById('loading');
+      const errorContainer = document.getElementById('error-container');
+      const reportContent = document.getElementById('report-content');
+      
+      loadingDiv.style.display = 'block';
+      errorContainer.innerHTML = '';
+      reportContent.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/data/data-quality-report?limit=100');
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to load report');
+        }
+        
+        reportData = result.data;
+        displayReport(reportData);
+        
+      } catch (error) {
+        errorContainer.innerHTML = `<div class="error"><i class="fas fa-exclamation-circle"></i> Error: ${error.message}</div>`;
+      } finally {
+        loadingDiv.style.display = 'none';
+        reportContent.style.display = 'block';
+      }
+    }
+    
+    function displayReport(data) {
+      // Display summary stats
+      const summary = data.summary;
+      const statsGrid = document.getElementById('stats-grid');
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <h3>Total Records</h3>
+          <div class="value">${summary.total_records.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Sailors</h3>
+          <div class="value">${summary.total_sailors.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Regattas</h3>
+          <div class="value">${summary.total_regattas.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Clubs</h3>
+          <div class="value">${summary.total_clubs.toLocaleString()}</div>
+        </div>
+      `;
+      
+      // Display warning if issues found
+      if (summary.potential_issues_count > 0) {
+        const warningCard = document.getElementById('warning-card');
+        const warningText = document.getElementById('warning-text');
+        warningText.textContent = `There are potentially ${summary.potential_issues_count.toLocaleString()} records where sailor names appear to be incorrectly stored in the boat_name column. Review the patterns and samples below to verify.`;
+        warningCard.style.display = 'block';
+      } else {
+        document.getElementById('warning-card').style.display = 'none';
+      }
+      
+      // Display top patterns
+      if (data.top_patterns && data.top_patterns.length > 0) {
+        const patternsTbody = document.getElementById('patterns-tbody');
+        patternsTbody.innerHTML = '';
+        data.top_patterns.forEach(pattern => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="highlight">${pattern.boat_name}</td>
+            <td>${pattern.occurrence_count}</td>
+            <td>${pattern.regattas_affected}</td>
+            <td>${pattern.sample_skippers || '-'}</td>
+          `;
+          patternsTbody.appendChild(row);
+        });
+        document.getElementById('patterns-section').style.display = 'block';
+      } else {
+        document.getElementById('patterns-section').style.display = 'none';
+      }
+      
+      // Display sample issues
+      if (data.sample_issues && data.sample_issues.length > 0) {
+        const samplesTbody = document.getElementById('samples-tbody');
+        samplesTbody.innerHTML = '';
+        data.sample_issues.forEach(record => {
+          const row = document.createElement('tr');
+          const date = record.regatta_date ? new Date(record.regatta_date).toLocaleDateString() : '-';
+          row.innerHTML = `
+            <td>${record.id}</td>
+            <td>${record.regatta_name || '-'}</td>
+            <td>${date}</td>
+            <td>${record.skipper || '-'}</td>
+            <td class="highlight">${record.boat_name || '-'}</td>
+            <td>${record.yacht_club || '-'}</td>
+            <td>${record.position || '-'}</td>
+          `;
+          samplesTbody.appendChild(row);
+        });
+        document.getElementById('samples-section').style.display = 'block';
+      } else {
+        document.getElementById('samples-section').style.display = 'none';
+      }
+    }
+    
+    function exportReport() {
+      if (!reportData) {
+        alert('Please load the report first');
+        return;
+      }
+      
+      // Create CSV content
+      let csv = 'Data Quality Report\n\n';
+      csv += `Total Records,${reportData.summary.total_records}\n`;
+      csv += `Total Sailors,${reportData.summary.total_sailors}\n`;
+      csv += `Total Regattas,${reportData.summary.total_regattas}\n`;
+      csv += `Total Clubs,${reportData.summary.total_clubs}\n`;
+      csv += `Potential Issues,${reportData.summary.potential_issues_count}\n\n`;
+      
+      // Export patterns
+      csv += 'Top Patterns\n';
+      csv += 'Boat Name,Occurrences,Regattas Affected,Sample Skippers\n';
+      reportData.top_patterns.forEach(pattern => {
+        csv += `"${pattern.boat_name}",${pattern.occurrence_count},${pattern.regattas_affected},"${pattern.sample_skippers || '-'}"\n`;
+      });
+      csv += '\n';
+      
+      // Export sample issues
+      csv += 'Sample Problematic Records\n';
+      csv += 'ID,Regatta,Date,Skipper,Boat Name,Club,Position\n';
+      reportData.sample_issues.forEach(record => {
+        const date = record.regatta_date ? new Date(record.regatta_date).toLocaleDateString() : '-';
+        csv += `${record.id},"${record.regatta_name || '-'}",${date},"${record.skipper || '-'}","${record.boat_name || '-'}","${record.yacht_club || '-'}",${record.position || '-'}\n`;
+      });
+      
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `data-quality-report-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+    
+    // Load report on page load
+    window.addEventListener('DOMContentLoaded', loadReport);
+  </script>
+</body>
+</html>
+
