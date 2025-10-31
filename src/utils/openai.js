@@ -80,11 +80,16 @@ Valid query types and their expected JSON response formats:
 
 IMPORTANT: If the user asks about a person by name with ANY phrasing (e.g., "do you have any sailing data about [Name]", "tell me about [Name]", "find [Name]", just "[Name]"), extract the NAME and use sailor_search. Always extract the actual person's name from the query.
 
+CLUB QUERY PATTERNS - These should use club_skippers query type:
+- "club [name]" or "[name] club" -> {"queryType": "club_skippers", "clubName": "[name]"}
+- "tell me about [club]" or "info on [club]" -> {"queryType": "club_skippers", "clubName": "[club]"}
+- Just "[club]" or "[abbreviation]" (if it's likely a club name/abbreviation) -> {"queryType": "club_skippers", "clubName": "[club]"}
+- Common club abbreviations: SYS, LYC, SBYC, etc. Treat these as clubs if the query is just the abbreviation.
+
 SPECIAL QUERIES:
 - "top X clubs" or "most active clubs" -> {"queryType": "top_clubs", "limit": X}
 - "sailor with most races" or "most active sailor" -> {"queryType": "most_active_sailor"}
 - "how many sailors listed" -> {"queryType": "database_status"}
-- "info on [club]" or "tell me about [club]" -> {"queryType": "club_skippers", "clubName": "[club]"}
 
 If you can determine the query type, return the JSON with the appropriate parameters.
 If you don't understand the query, return {"queryType": "database_status"}.
@@ -103,6 +108,20 @@ const processChatQuery = async (userQuestion) => {
         queryType: 'sailor_search',
         skipper: userQuestion.trim()
       };
+    }
+    
+    // Check for club queries - patterns like "club SYS", "SYS club", or just "SYS" (common abbreviations)
+    const clubPattern = /(?:club|yacht\s*club|team)\s+([^\s]+)|^([A-Z]{2,5})$/i;
+    const clubMatch = userQuestion.match(clubPattern);
+    if (clubMatch) {
+      const clubName = clubMatch[1] || clubMatch[2];
+      if (clubName) {
+        console.log('Detected club query:', clubName);
+        return {
+          queryType: 'club_skippers',
+          clubName: clubName.trim()
+        };
+      }
     }
     
     // Check if the query is explicitly about regatta results
@@ -181,16 +200,27 @@ const generateResponse = async (queryType, data) => {
     // Create a prompt based on the query type and data
     switch (queryType) {
       case 'club_skippers':
-        contextPrompt = `Here are the skippers from ${data.clubName}:\n${JSON.stringify(data.results, null, 2)}\n\n
-Format the response as follows:
-1. First line: Club name and total number of skippers
-2. Then a table with columns:
-   | Skipper | Total Races | Avg Position | Podiums | Best Position | Last Race |
-   Use proper markdown table formatting with right-aligned numbers.
-   Sort by total races (desc) and average position (asc).
-   Round averages to 2 decimal places.
-   Format dates as YYYY-MM-DD.
-   If more than 15 skippers, show only top 15 and add total count at bottom.`;
+        if (!data.results || data.results.length === 0) {
+          contextPrompt = `No data found for club "${data.clubName}". Return a polite message saying "I couldn't find any data for ${data.clubName} in my database."`;
+        } else {
+          contextPrompt = `I found the sailing club ${data.clubName || 'unknown'}.
+
+Summary data:
+- Total sailors: ${data.totalSailors || 0}
+- Top 5 sailors by average position: ${JSON.stringify(data.topSailorsByAvg || [], null, 2)}
+- Most active sailor: ${JSON.stringify(data.mostActiveSailor || null, null, 2)}
+- Boat classes/categories: ${JSON.stringify(data.categories || [], null, 2)}
+
+Format the response EXACTLY as follows:
+1. "I found the sailing club [club name]"
+2. "It has [X] Sailors listed"
+3. "The top 5 sailors are:" followed by a table showing: | Name | Avg Position | Total Races |
+   Use proper markdown table formatting. Round averages to 2 decimal places.
+4. "Sailor [name] shows the most regatta entries totalling [N]"
+5. "They show sailors in class [category1], [category2], [category3]" (list all categories separated by commas)
+
+Use only factual data without additional commentary.`;
+        }
         break;
       case 'sailor_search':
         if (!data.results || data.results.length === 0) {

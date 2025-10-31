@@ -75,11 +75,23 @@ router.post('/', async (req, res) => {
         break;
         
       case 'club_skippers':
-        const clubResults = await regattaService.getClubSkippers(queryData.clubName);
-        data = {
-          clubName: queryData.clubName,
-          results: clubResults
-        };
+        const clubSummary = await regattaService.getClubSummary(queryData.clubName);
+        if (!clubSummary) {
+          // No club found, return empty data
+          data = {
+            clubName: queryData.clubName,
+            results: []
+          };
+        } else {
+          data = {
+            clubName: clubSummary.clubName,
+            totalSailors: clubSummary.totalSailors,
+            topSailorsByAvg: clubSummary.topSailorsByAvg,
+            mostActiveSailor: clubSummary.mostActiveSailor,
+            categories: clubSummary.categories,
+            results: await regattaService.getClubSkippers(queryData.clubName) // Keep full list for detailed view
+          };
+        }
         break;
         
       case 'boat_search':

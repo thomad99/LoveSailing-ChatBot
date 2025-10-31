@@ -348,6 +348,56 @@ class RegattaService {
     }
   }
 
+  // Get comprehensive club summary
+  async getClubSummary(clubName) {
+    try {
+      // Get club skippers with stats
+      const skippers = await this.getClubSkippers(clubName);
+      
+      if (skippers.length === 0) {
+        return null;
+      }
+      
+      // Get distinct categories/boat classes
+      const categoriesQuery = `
+        SELECT DISTINCT category
+        FROM RegattaNetworkData
+        WHERE yacht_club ILIKE $1 OR yacht_club ILIKE $2 OR yacht_club ILIKE $3 OR yacht_club ILIKE $4
+        AND category IS NOT NULL AND category != ''
+        ORDER BY category
+      `;
+      
+      const categoriesResult = await pool.query(categoriesQuery, [
+        `%${clubName}%`,
+        `%${clubName.toUpperCase()}%`,
+        `%${clubName.toLowerCase()}%`,
+        `%${clubName.replace(/\s+/g, '')}%`
+      ]);
+      
+      // Sort skippers by average position (best first) for top 5
+      const sortedByAvg = [...skippers]
+        .filter(s => s.avg_position != null)
+        .sort((a, b) => parseFloat(a.avg_position) - parseFloat(b.avg_position))
+        .slice(0, 5);
+      
+      // Get most active sailor (most races)
+      const mostActive = skippers.length > 0 
+        ? skippers.reduce((max, s) => (s.total_races > max.total_races ? s : max), skippers[0])
+        : null;
+      
+      return {
+        clubName: skippers[0]?.yacht_club || clubName,
+        totalSailors: skippers.length,
+        topSailorsByAvg: sortedByAvg,
+        mostActiveSailor: mostActive,
+        categories: categoriesResult.rows.map(r => r.category).filter(c => c)
+      };
+    } catch (error) {
+      console.error('Error getting club summary:', error);
+      throw error;
+    }
+  }
+
   // Get all skippers from a club
   async getClubSkippers(clubName) {
     const query = `
