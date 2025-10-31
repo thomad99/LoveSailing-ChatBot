@@ -80,6 +80,7 @@ SPECIAL QUERIES:
 - "top X clubs" or "most active clubs" -> {"queryType": "top_clubs", "limit": X}
 - "sailor with most races" or "most active sailor" -> {"queryType": "most_active_sailor"}
 - "how many sailors listed" -> {"queryType": "database_status"}
+- "info on [club]" or "tell me about [club]" -> {"queryType": "club_skippers", "clubName": "[club]"}
 
 If you can determine the query type, return the JSON with the appropriate parameters.
 If you don't understand the query, return {"queryType": "database_status"}.

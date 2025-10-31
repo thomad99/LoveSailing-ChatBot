@@ -441,7 +441,16 @@
       }
 
       function formatDataAsTable(data, type) {
-        if (!data || !data.results || data.results.length === 0) return null;
+        // Handle different data structures for different query types
+        if (!data) return null;
+        
+        // For most_active_sailor, check data.sailor
+        if (type === 'most_active_sailor') {
+          if (!data.sailor) return null;
+        } else {
+          // For other types, check data.results
+          if (!data.results || data.results.length === 0) return null;
+        }
 
         let html = '<div class="data-section">';
         
@@ -555,6 +564,68 @@
             });
             
             html += '</table>';
+            break;
+
+          case 'top_clubs':
+            html += `<h3>Top ${data.limit || 10} Clubs</h3>
+            <table class="data-table">
+              <tr>
+                <th>Club</th>
+                <th class="numeric-cell">Sailors</th>
+                <th class="numeric-cell">Total Races</th>
+                <th class="numeric-cell">Regattas Attended</th>
+              </tr>`;
+            
+            data.results.forEach(result => {
+              html += `<tr>
+                <td>${result.yacht_club}</td>
+                <td class="numeric-cell">${result.sailor_count}</td>
+                <td class="numeric-cell">${result.total_races}</td>
+                <td class="numeric-cell">${result.regattas_attended}</td>
+              </tr>`;
+            });
+            
+            html += '</table>';
+            break;
+
+          case 'most_active_sailor':
+            if (data.sailor) {
+              html += `<h3>Most Active Sailor</h3>
+              <table class="data-table">
+                <tr>
+                  <th>Metric</th>
+                  <th class="numeric-cell">Value</th>
+                </tr>
+                <tr>
+                  <td>Sailor</td>
+                  <td>${data.sailor.skipper}</td>
+                </tr>
+                <tr>
+                  <td>Club</td>
+                  <td>${data.sailor.yacht_club || '-'}</td>
+                </tr>
+                <tr>
+                  <td>Total Races</td>
+                  <td class="numeric-cell">${data.sailor.total_races}</td>
+                </tr>
+                <tr>
+                  <td>Regattas Attended</td>
+                  <td class="numeric-cell">${data.sailor.regattas_attended}</td>
+                </tr>
+                <tr>
+                  <td>Average Position</td>
+                  <td class="numeric-cell">${data.sailor.avg_position ? Number(data.sailor.avg_position).toFixed(2) : '-'}</td>
+                </tr>
+                <tr>
+                  <td>Best Position</td>
+                  <td class="numeric-cell">${data.sailor.best_position || '-'}</td>
+                </tr>
+                <tr>
+                  <td>Last Race</td>
+                  <td class="date-cell">${formatDate(data.sailor.last_race_date)}</td>
+                </tr>
+              </table>`;
+            }
             break;
         }
 
