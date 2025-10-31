@@ -23,7 +23,51 @@ router.post('/', async (req, res) => {
     // Retrieve the appropriate data based on the query type
     switch (queryData.queryType) {
       case 'sailor_search':
-        const sailorResults = await regattaService.searchRecords({ skipper: queryData.skipper });
+        let sailorResults = await regattaService.searchRecords({ skipper: queryData.skipper });
+        const searchTerm = queryData.skipper;
+        
+        // If no sailor results, try searching in other fields (club, boat, regatta)
+        if (sailorResults.length === 0) {
+          console.log('No sailor results found, trying multi-field search for:', searchTerm);
+          
+          // Try yacht club search
+          const clubResults = await regattaService.searchRecords({ yacht_club: searchTerm });
+          if (clubResults.length > 0) {
+            // Found club results, suggest getting club skippers
+            queryData.queryType = 'club_skippers';
+            queryData.clubName = searchTerm;
+            data = {
+              clubName: searchTerm,
+              results: await regattaService.getClubSkippers(searchTerm)
+            };
+            break;
+          }
+          
+          // Try boat name search
+          const boatResults = await regattaService.searchRecords({ boat_name: searchTerm });
+          if (boatResults.length > 0) {
+            queryData.queryType = 'boat_search';
+            queryData.boatName = searchTerm;
+            data = {
+              boatName: searchTerm,
+              results: boatResults
+            };
+            break;
+          }
+          
+          // Try regatta name search
+          const regattaResults = await regattaService.searchRecords({ regatta_name: searchTerm });
+          if (regattaResults.length > 0) {
+            queryData.queryType = 'regatta_results';
+            queryData.regattaName = searchTerm;
+            data = {
+              regattaName: searchTerm,
+              results: regattaResults
+            };
+            break;
+          }
+        }
+        
         data = {
           skipper: queryData.skipper,
           results: sailorResults

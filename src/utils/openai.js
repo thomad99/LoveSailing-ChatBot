@@ -149,6 +149,8 @@ const processChatQuery = async (userQuestion) => {
         // Simple heuristic: if query has 1-3 words and starts with capital letter
         const words = userQuestion.trim().split(/\s+/);
         if (words.length <= 3 && /^[A-Z]/.test(words[0])) {
+          // This could be a person name, club, boat, or regatta
+          // Try searching for it as a sailor first
           return { 
             queryType: 'sailor_search',
             skipper: userQuestion.trim()
@@ -157,6 +159,7 @@ const processChatQuery = async (userQuestion) => {
         
         // Fallback to database status if no JSON found
         console.warn('No JSON found in OpenAI response:', assistantResponse);
+        console.warn('Raw response was:', assistantResponse);
         return { queryType: 'database_status' };
       }
     } catch (parseError) {
