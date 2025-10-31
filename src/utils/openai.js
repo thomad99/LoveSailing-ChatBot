@@ -108,7 +108,7 @@ const processChatQuery = async (userQuestion) => {
     
     // Call OpenAI API to analyze the user's query
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview', // or whichever model is appropriate
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userQuestion }
@@ -211,7 +211,7 @@ Format the response as follows:
     
     // Call OpenAI to generate a natural language response
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       messages: [
         { 
           role: 'system', 
@@ -220,7 +220,7 @@ Format the response as follows:
         { role: 'user', content: contextPrompt }
       ],
       temperature: 0.3,
-      max_tokens: 500
+      max_tokens: 2000
     });
     
     return response.choices[0].message.content;
