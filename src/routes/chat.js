@@ -75,6 +75,22 @@ router.post('/', async (req, res) => {
         };
         break;
         
+      case 'top_clubs':
+        const clubLimit = queryData.limit || 10;
+        const topClubs = await regattaService.getTopClubs(clubLimit);
+        data = {
+          limit: clubLimit,
+          results: topClubs
+        };
+        break;
+        
+      case 'most_active_sailor':
+        const mostActive = await regattaService.getMostActiveSailor();
+        data = {
+          sailor: mostActive
+        };
+        break;
+        
       default:
         data = await regattaService.getDatabaseStats();
     }

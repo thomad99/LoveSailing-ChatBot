@@ -76,6 +76,11 @@ Valid query types and their expected JSON response formats:
 6. regatta_count - Count regattas in a specific year
 7. club_skippers - List all skippers from a specific club
 
+SPECIAL QUERIES:
+- "top X clubs" or "most active clubs" -> {"queryType": "top_clubs", "limit": X}
+- "sailor with most races" or "most active sailor" -> {"queryType": "most_active_sailor"}
+- "how many sailors listed" -> {"queryType": "database_status"}
+
 If you can determine the query type, return the JSON with the appropriate parameters.
 If you don't understand the query, return {"queryType": "database_status"}.
 
@@ -204,6 +209,29 @@ Format the response as follows:
         break;
       case 'regatta_count':
         contextPrompt = `Here are the regattas that took place in ${data.year}:\n${JSON.stringify(data.results, null, 2)}\n\nList only regatta names, dates, and participant counts in a compact tabular format.`;
+        break;
+      case 'top_clubs':
+        contextPrompt = `Here are the top ${data.limit} clubs by number of sailors:\n${JSON.stringify(data.results, null, 2)}\n\n
+Format the response as follows:
+1. First line: "Top ${data.limit} Clubs"
+2. Then a table with columns:
+   | Club | Sailors | Total Races | Regattas Attended |
+   Use proper markdown table formatting with right-aligned numbers.
+   Sort by number of sailors (descending).
+   Round averages to 2 decimal places.`;
+        break;
+      case 'most_active_sailor':
+        contextPrompt = `Here is information about the most active sailor:\n${JSON.stringify(data.sailor, null, 2)}\n\n
+Format the response as follows:
+1. First line: Name and club
+2. Then a table with columns:
+   | Metric | Value |
+   | Total Races | X |
+   | Regattas Attended | X |
+   | Average Position | X.XX |
+   | Best Position | X |
+   | Last Race | YYYY-MM-DD |
+   Use proper markdown table formatting with right-aligned numbers.`;
         break;
       default:
         contextPrompt = `Here is some information from the sailing database:\n${JSON.stringify(data, null, 2)}\n\nProvide only a compact list of the key statistics or data points shown, without commentary.`;

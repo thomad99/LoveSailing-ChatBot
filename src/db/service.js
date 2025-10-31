@@ -398,6 +398,57 @@ class RegattaService {
     }
   }
 
+  // Get top clubs by number of sailors
+  async getTopClubs(limit = 10) {
+    const query = `
+      SELECT 
+        yacht_club,
+        COUNT(DISTINCT skipper) as sailor_count,
+        COUNT(*) as total_races,
+        COUNT(DISTINCT regatta_name) as regattas_attended
+      FROM RegattaNetworkData
+      WHERE yacht_club IS NOT NULL AND yacht_club != '' AND yacht_club != 'Unknown'
+      GROUP BY yacht_club
+      ORDER BY sailor_count DESC, total_races DESC
+      LIMIT $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [limit]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting top clubs:', error);
+      throw error;
+    }
+  }
+
+  // Get most active sailor (person with most races)
+  async getMostActiveSailor() {
+    const query = `
+      SELECT 
+        skipper,
+        yacht_club,
+        COUNT(*) as total_races,
+        COUNT(DISTINCT regatta_name) as regattas_attended,
+        AVG(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as avg_position,
+        MIN(CASE WHEN position ~ '^[0-9]+$' THEN CAST(position AS INTEGER) ELSE NULL END) as best_position,
+        MAX(regatta_date) as last_race_date
+      FROM RegattaNetworkData
+      WHERE skipper IS NOT NULL AND skipper != ''
+      GROUP BY skipper, yacht_club
+      ORDER BY total_races DESC
+      LIMIT 1
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('Error getting most active sailor:', error);
+      throw error;
+    }
+  }
+
   // Get detailed database report with various insights
   async getDataQualityReport(limit = 100) {
     try {
