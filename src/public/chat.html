@@ -393,10 +393,12 @@
           if (tableHtml) {
             messageContent.innerHTML = tableHtml;
           } else {
-            messageContent.textContent = content;
+            // Process markdown in the content
+            messageContent.innerHTML = processMarkdown(content);
           }
         } else {
-          messageContent.textContent = content;
+          // Process markdown in the content
+          messageContent.innerHTML = processMarkdown(content);
         }
         
         messageDiv.appendChild(messageContent);
@@ -626,6 +628,76 @@
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+      }
+
+      // Process markdown to HTML
+      function processMarkdown(content) {
+        if (!content) return '';
+        
+        let html = content;
+        
+        // Convert markdown tables - handle multi-line tables
+        const tableRegex = /\|([^|\n]+)\|(?:\|([^|\n]+)\|)+/g;
+        let inTable = false;
+        const lines = html.split('\n');
+        const processedLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const isTableRow = /^\|.*\|$/.test(line.trim());
+          const isTableSeparator = /^\|[\s\-:]+\|/.test(line.trim());
+          
+          if (isTableRow && !isTableSeparator) {
+            if (!inTable) {
+              processedLines.push('<table class="data-table">');
+              inTable = true;
+            }
+            const cells = line.split('|').filter(cell => cell.trim() !== '');
+            processedLines.push('<tr>');
+            cells.forEach(cell => {
+              processedLines.push(`<td>${cell.trim()}</td>`);
+            });
+            processedLines.push('</tr>');
+          } else if (isTableSeparator) {
+            // Skip separator lines
+            continue;
+          } else {
+            if (inTable) {
+              processedLines.push('</table>');
+              inTable = false;
+            }
+            processedLines.push(line);
+          }
+        }
+        
+        if (inTable) {
+          processedLines.push('</table>');
+        }
+        
+        html = processedLines.join('\n');
+        
+        // Convert markdown bold
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert markdown italic
+        html = html.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+        
+        // Convert line breaks
+        html = html.replace(/\n/g, '<br>');
+        
+        // Convert markdown headers
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        
+        // Convert markdown code blocks
+        html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+        
+        // Convert markdown lists
+        html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        
+        return html;
       }
 
       // When the page loads, add the welcome message
