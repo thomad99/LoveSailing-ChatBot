@@ -317,6 +317,132 @@ class RegattaService {
     }
   }
 
+  // Get regatta statistics (biggest, smallest, etc.)
+  async getRegattaStats(metric = 'largest') {
+    try {
+      // Get regattas with participant counts
+      const query = `
+        SELECT 
+          regatta_name,
+          regatta_date,
+          COUNT(DISTINCT skipper) as participant_count,
+          COUNT(*) as total_records,
+          COUNT(DISTINCT yacht_club) as clubs_represented
+        FROM RegattaNetworkData
+        WHERE regatta_name IS NOT NULL AND regatta_name != ''
+        GROUP BY regatta_name, regatta_date
+      `;
+      
+      const result = await pool.query(query);
+      const regattas = result.rows;
+      
+      if (regattas.length === 0) {
+        return null;
+      }
+      
+      let selectedRegattas = [];
+      
+      switch (metric.toLowerCase()) {
+        case 'largest':
+        case 'biggest':
+        case 'most':
+          // Regatta with most participants
+          const largest = regattas.reduce((max, r) => 
+            parseInt(r.participant_count) > parseInt(max.participant_count) ? r : max
+          );
+          selectedRegattas = [largest];
+          break;
+          
+        case 'smallest':
+        case 'least':
+          // Regatta with fewest participants
+          const smallest = regattas.reduce((min, r) => 
+            parseInt(r.participant_count) < parseInt(min.participant_count) ? r : min
+          );
+          selectedRegattas = [smallest];
+          break;
+          
+        case 'recent':
+          // Most recent regattas
+          selectedRegattas = regattas
+            .sort((a, b) => new Date(b.regatta_date) - new Date(a.regatta_date))
+            .slice(0, 5);
+          break;
+          
+        case 'upcoming':
+          // Future regattas (if any) or most recent if none upcoming
+          const today = new Date();
+          const upcoming = regattas
+            .filter(r => new Date(r.regatta_date) > today)
+            .sort((a, b) => new Date(a.regatta_date) - new Date(b.regatta_date));
+          
+          if (upcoming.length > 0) {
+            selectedRegattas = upcoming.slice(0, 5);
+          } else {
+            // If no upcoming, show most recent
+            selectedRegattas = regattas
+              .sort((a, b) => new Date(b.regatta_date) - new Date(a.regatta_date))
+              .slice(0, 5);
+          }
+          break;
+          
+        default:
+          selectedRegattas = regattas.slice(0, 10);
+      }
+      
+      return {
+        metric,
+        regattas: selectedRegattas,
+        totalRegattas: regattas.length
+      };
+    } catch (error) {
+      console.error('Error getting regatta stats:', error);
+      throw error;
+    }
+  }
+
+  // Search regattas by criteria
+  async searchRegattas(criteria) {
+    try {
+      let query = `
+        SELECT 
+          regatta_name,
+          regatta_date,
+          COUNT(DISTINCT skipper) as participant_count,
+          COUNT(DISTINCT yacht_club) as clubs_represented
+        FROM RegattaNetworkData
+        WHERE regatta_name IS NOT NULL AND regatta_name != ''
+      `;
+      const values = [];
+      let valueIndex = 1;
+      
+      if (criteria.year) {
+        query += ` AND EXTRACT(YEAR FROM regatta_date) = $${valueIndex}`;
+        values.push(criteria.year);
+        valueIndex++;
+      }
+      
+      if (criteria.dateRange === 'recent') {
+        query += ` AND regatta_date <= CURRENT_DATE ORDER BY regatta_date DESC`;
+      } else if (criteria.dateRange === 'upcoming') {
+        query += ` AND regatta_date > CURRENT_DATE ORDER BY regatta_date ASC`;
+      } else {
+        query += ` ORDER BY regatta_date DESC`;
+      }
+      
+      if (criteria.limit) {
+        query += ` LIMIT $${valueIndex}`;
+        values.push(criteria.limit);
+      }
+      
+      const result = await pool.query(query, values);
+      return result.rows;
+    } catch (error) {
+      console.error('Error searching regattas:', error);
+      throw error;
+    }
+  }
+
   // Clear all records from the database
   async clearDatabase() {
     const client = await pool.connect();

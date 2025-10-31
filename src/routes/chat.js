@@ -22,6 +22,9 @@ router.post('/', async (req, res) => {
     
     // Retrieve the appropriate data based on the query type
     switch (queryData.queryType) {
+      case 'unknown':
+        data = { message: "Sorry, I don't understand. Please try rephrasing the question." };
+        break;
       case 'sailor_search':
         let sailorResults = await regattaService.searchRecords({ skipper: queryData.skipper });
         const searchTerm = queryData.skipper;
@@ -146,6 +149,51 @@ router.post('/', async (req, res) => {
         data = {
           sailor: mostActive
         };
+        break;
+        
+      case 'regatta_stats':
+        const metric = queryData.metric || 'largest';
+        const regattaStats = await regattaService.getRegattaStats(metric);
+        data = {
+          metric: metric,
+          stats: regattaStats
+        };
+        break;
+        
+      case 'regatta_search':
+        const regattaSearchResults = await regattaService.searchRegattas({
+          year: queryData.year,
+          dateRange: queryData.dateRange,
+          limit: queryData.limit || 10
+        });
+        data = {
+          year: queryData.year,
+          dateRange: queryData.dateRange,
+          results: regattaSearchResults
+        };
+        break;
+        
+      case 'location_query':
+        // For location queries, we'll search by club names or ask for location
+        if (queryData.needsLocation) {
+          // Return a message asking for location
+          data = {
+            needsLocation: true,
+            message: `I'd be happy to help you find regattas near you! Could you please tell me your location or city? For example, "Sarasota", "Florida", or "near me" works if you provide a location.`
+          };
+        } else if (queryData.location) {
+          // Try to find regattas by searching club names that might match the location
+          const locationResults = await regattaService.searchRecords({ yacht_club: queryData.location });
+          data = {
+            location: queryData.location,
+            results: locationResults
+          };
+        } else {
+          data = {
+            needsLocation: true,
+            message: `Could you please tell me your location so I can find nearby regattas?`
+          };
+        }
         break;
         
       default:

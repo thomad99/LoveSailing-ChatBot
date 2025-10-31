@@ -7,13 +7,13 @@ const openai = new OpenAI({
 });
 
 // System prompt template with information about our data
-const SYSTEM_PROMPT = `You are a sailing race database assistant. You help users find information about sailors, races, and results.
+const SYSTEM_PROMPT = `You are an intelligent sailing race database assistant. You understand natural language queries and convert them into structured database queries.
 
 Database Structure:
 - Regatta: Information about sailing races
   * regatta_name: Name of the regatta/race
   * regatta_date: Date when the regatta took place
-  * category: Boat type or race category
+  * category: Boat type or race category (e.g., C420, RWB, Green Fleet, Laser, etc.)
 - Skippers/Sailors: Information about people (skipper and sailor mean the same thing)
   * skipper: Person's full name (this field contains sailor names)
   * yacht_club: Sailing club the person represents (handles variations like SYS = Sarasota Youth Sailing)
@@ -71,14 +71,47 @@ Valid query types and their expected JSON response formats:
 1. sailor_search - Find information about a sailor by name
    Examples: "find john", "tell me about Sarah Smith", "do you have data on Dominic Thomas"
    Return: {"queryType": "sailor_search", "skipper": "person's name"}
-2. boat_search - Find information about a specific boat
-3. top_sailors - Find top performers from a specific club
-4. regatta_results - Show results for a specific regatta
-5. database_status - Show database statistics
-6. regatta_count - Count regattas in a specific year
-7. club_skippers - List all skippers from a specific club
 
-IMPORTANT: If the user asks about a person by name with ANY phrasing (e.g., "do you have any sailing data about [Name]", "tell me about [Name]", "find [Name]", just "[Name]"), extract the NAME and use sailor_search. Always extract the actual person's name from the query.
+2. boat_search - Find information about a specific boat
+   Examples: "find boat Wind Runner", "who sails Blue Horizon"
+   Return: {"queryType": "boat_search", "boatName": "boat name"}
+
+3. top_sailors - Find top performers from a specific club
+   Examples: "best sailors from SYS", "top performers at LYC"
+   Return: {"queryType": "top_sailors", "yachtClub": "club name", "limit": 10}
+
+4. regatta_results - Show results for a specific regatta
+   Examples: "results for Spring Series", "who won Gasparilla Regatta"
+   Return: {"queryType": "regatta_results", "regattaName": "regatta name"}
+
+5. database_status - Show database statistics
+   Examples: "how many sailors", "database stats", "what's in the database"
+
+6. regatta_count - Count regattas in a specific year
+   Examples: "regattas in 2024", "races last year"
+   Return: {"queryType": "regatta_count", "year": 2024}
+
+7. club_skippers - List all skippers from a specific club
+   Examples: "club SYS", "sailors from LYC"
+
+8. regatta_stats - Get statistics about regattas (participants, dates, etc.)
+   Examples: "biggest regatta", "largest regatta", "most participants", "smallest regatta", "regatta with most sailors"
+   Return: {"queryType": "regatta_stats", "metric": "largest|smallest|recent|upcoming"}
+
+9. regatta_search - Search for regattas by various criteria
+   Examples: "regattas in 2024", "recent regattas", "upcoming regattas"
+   Return: {"queryType": "regatta_search", "year": 2024, "dateRange": "recent|upcoming"}
+
+10. location_query - Regattas by location (if location data available)
+    Examples: "regattas near me", "races in Florida", "events near Sarasota"
+    Return: {"queryType": "location_query", "location": "location name", "needsLocation": true}
+
+IMPORTANT: 
+- If the user asks about a person by name with ANY phrasing, extract the NAME and use sailor_search
+- For comparative queries like "biggest", "smallest", "most", "least", use appropriate query types
+- For location queries like "near me", set needsLocation: true and ask for location
+- For date-related queries, extract year or date range
+- Interpret natural language flexibly - users may phrase things differently
 
 CLUB QUERY PATTERNS - These should use club_skippers query type:
 - "club [name]" or "[name] club" -> {"queryType": "club_skippers", "clubName": "[name]"}
@@ -92,7 +125,7 @@ SPECIAL QUERIES:
 - "how many sailors listed" -> {"queryType": "database_status"}
 
 If you can determine the query type, return the JSON with the appropriate parameters.
-If you don't understand the query, return {"queryType": "database_status"}.
+If you don't understand the query, return {"queryType": "unknown"}.
 
 You must ALWAYS return a valid JSON object containing the queryType field.`;
 
@@ -176,25 +209,29 @@ const processChatQuery = async (userQuestion) => {
           };
         }
         
-        // Fallback to database status if no JSON found
+        // Fallback to unknown if no JSON found
         console.warn('No JSON found in OpenAI response:', assistantResponse);
         console.warn('Raw response was:', assistantResponse);
-        return { queryType: 'database_status' };
+        return { queryType: 'unknown', original: userQuestion };
       }
     } catch (parseError) {
       console.error('Error parsing JSON from OpenAI response:', parseError);
       console.log('OpenAI raw response:', assistantResponse);
-      return { queryType: 'database_status' };
+      return { queryType: 'unknown', original: userQuestion };
     }
   } catch (error) {
     console.error('Error calling OpenAI API:', error);
-    return { queryType: 'database_status' };
+    return { queryType: 'unknown', original: userQuestion };
   }
 };
 
 // Function to generate a natural language response to the user based on the data
 const generateResponse = async (queryType, data) => {
   try {
+    // If we explicitly don't understand, return a friendly fallback without calling OpenAI
+    if (queryType === 'unknown') {
+      return 'Sorry, I don\'t understand. Please try rephrasing the question (e.g., "find sailor Dominic Thomas", "club SYS", "biggest regatta").';
+    }
     let contextPrompt = '';
     
     // Create a prompt based on the query type and data
