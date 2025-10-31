@@ -69,12 +69,16 @@ Understand these synonyms:
 
 Valid query types and their expected JSON response formats:
 1. sailor_search - Find information about a sailor by name
+   Examples: "find john", "tell me about Sarah Smith", "do you have data on Dominic Thomas"
+   Return: {"queryType": "sailor_search", "skipper": "person's name"}
 2. boat_search - Find information about a specific boat
 3. top_sailors - Find top performers from a specific club
 4. regatta_results - Show results for a specific regatta
 5. database_status - Show database statistics
 6. regatta_count - Count regattas in a specific year
 7. club_skippers - List all skippers from a specific club
+
+IMPORTANT: If the user asks about a person by name with ANY phrasing (e.g., "do you have any sailing data about [Name]", "tell me about [Name]", "find [Name]", just "[Name]"), extract the NAME and use sailor_search. Always extract the actual person's name from the query.
 
 SPECIAL QUERIES:
 - "top X clubs" or "most active clubs" -> {"queryType": "top_clubs", "limit": X}
@@ -186,10 +190,18 @@ Format the response as follows:
    If more than 15 skippers, show only top 15 and add total count at bottom.`;
         break;
       case 'sailor_search':
-        contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet with the key information about this sailor organized by categories: 1) Basic info (name, club), 2) Top achievements (positions 1-3 only, with regatta names and dates), 3) Recent race history (only list positions and race names). Include only factual data without commentary.`;
+        if (!data.results || data.results.length === 0) {
+          contextPrompt = `No data found for sailor "${data.skipper}". Return a polite message saying "I couldn't find any sailing data for ${data.skipper} in my database."`;
+        } else {
+          contextPrompt = `Here is information about the sailor "${data.skipper}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet with the key information about this sailor organized by categories: 1) Basic info (name, club), 2) Top achievements (positions 1-3 only, with regatta names and dates), 3) Recent race history (only list positions and race names). Include only factual data without commentary.`;
+        }
         break;
       case 'boat_search':
-        contextPrompt = `Here is information about the boat "${data.boatName}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet about this boat, with factual data about who sails it and its performance record.`;
+        if (!data.results || data.results.length === 0) {
+          contextPrompt = `No data found for boat "${data.boatName}". Return a polite message saying "I couldn't find any data for ${data.boatName} in my database."`;
+        } else {
+          contextPrompt = `Here is information about the boat "${data.boatName}":\n${JSON.stringify(data.results, null, 2)}\n\nProvide only a structured fact sheet about this boat, with factual data about who sails it and its performance record.`;
+        }
         break;
       case 'top_sailors':
         contextPrompt = `Here are the top sailors from ${data.yachtClub}:\n${JSON.stringify(data.results, null, 2)}\n\nList only the sailors' names, clubs, and key performance statistics in a compact format.`;
