@@ -17,6 +17,7 @@ router.post('/', async (req, res) => {
     
     // Process the user's query to determine the intent
     const queryData = await processChatQuery(query);
+    console.log('Query classified as:', queryData.queryType);
     let data = null;
     
     // Retrieve the appropriate data based on the query type
@@ -96,7 +97,9 @@ router.post('/', async (req, res) => {
     }
     
     // Generate a natural language response based on the data
+    console.log('Data retrieved:', JSON.stringify(data).substring(0, 200) + '...');
     const responseText = await generateResponse(queryData.queryType, data);
+    console.log('Response generated, length:', responseText.length);
     
     res.status(200).json({
       success: true,

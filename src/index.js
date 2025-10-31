@@ -49,6 +49,11 @@ const startServer = async () => {
       res.sendFile(path.join(__dirname, 'public', 'report.html'));
     });
     
+    // Debug/test page
+    app.get('/debug', (req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'debug.html'));
+    });
+    
     // Home page (redirect to upload page)
     app.get('/', (req, res) => {
       res.redirect('/upload');
@@ -65,6 +70,7 @@ const startServer = async () => {
       console.log(`Upload page: http://localhost:${PORT}/upload`);
       console.log(`Chat page: http://localhost:${PORT}/chat`);
       console.log(`Report page: http://localhost:${PORT}/report`);
+      console.log(`Debug page: http://localhost:${PORT}/debug`);
     });
   } catch (error) {
     console.error('Error starting server:', error);

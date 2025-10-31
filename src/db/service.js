@@ -175,6 +175,10 @@ class RegattaService {
     
     try {
       const result = await pool.query(query, values);
+      console.log(`Search returned ${result.rows.length} rows`);
+      if (result.rows.length > 0) {
+        console.log('First result sample:', result.rows[0]);
+      }
       return result.rows;
     } catch (error) {
       console.error('Error searching records:', error);

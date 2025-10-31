@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Debug Tests</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f8ff;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #020053;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #020053;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #040075;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    .info {
+      color: blue;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Database Debug & Test Panel</h1>
+    
+    <div class="test-section">
+      <h2>Database Connectivity Tests</h2>
+      <button onclick="testDatabaseConnection()">Test Database Connection</button>
+      <button onclick="testGetStats()">Get Database Stats</button>
+      <button onclick="testSampleRecords()">Get Sample Records</button>
+      <div id="dbResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Sailor Search Tests</h2>
+      <input type="text" id="searchName" placeholder="Enter name (e.g., John)" style="padding: 8px; margin: 5px;">
+      <button onclick="testSailorSearch()">Search for Sailor</button>
+      <button onclick="testSailorSearch()">Search Random Names</button>
+      <div id="searchResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>OpenAI Tests</h2>
+      <button onclick="testOpenAIConnection()">Test OpenAI Connection</button>
+      <button onclick="testQueryClassification()">Test Query Classification</button>
+      <div id="openaiResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Club & Top Sailors Tests</h2>
+      <input type="text" id="clubName" placeholder="Enter club name (e.g., SYS)" style="padding: 8px; margin: 5px;">
+      <button onclick="testClubSkippers()">Get Club Skippers</button>
+      <button onclick="testTopClubs()">Get Top Clubs</button>
+      <button onclick="testMostActiveSailor()">Get Most Active Sailor</button>
+      <div id="clubResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>All Tests</h2>
+      <button onclick="runAllTests()" style="background-color: #d9534f;">🚀 Run All Tests</button>
+      <div id="allTestsResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Navigation</h2>
+      <a href="/chat" style="color: #020053; text-decoration: none; padding: 10px; display: inline-block; border: 2px solid #020053; border-radius: 5px; margin: 5px;">📱 Chat Interface</a>
+      <a href="/report" style="color: #020053; text-decoration: none; padding: 10px; display: inline-block; border: 2px solid #020053; border-radius: 5px; margin: 5px;">📊 Database Report</a>
+      <a href="/upload" style="color: #020053; text-decoration: none; padding: 10px; display: inline-block; border: 2px solid #020053; border-radius: 5px; margin: 5px;">⬆️ Upload Data</a>
+    </div>
+  </div>
+
+  <script>
+    let logResults = [];
+
+    function log(targetId, message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${message}`;
+      
+      const div = document.getElementById(targetId);
+      const pre = document.createElement('pre');
+      pre.className = type;
+      pre.textContent = logEntry;
+      div.appendChild(pre);
+      div.scrollTop = div.scrollHeight;
+      
+      console.log(logEntry);
+    }
+
+    function clearResult(targetId) {
+      document.getElementById(targetId).innerHTML = '';
+    }
+
+    async function testDatabaseConnection() {
+      clearResult('dbResult');
+      log('dbResult', 'Testing database connection...', 'info');
+      
+      try {
+        const response = await fetch('/api/data/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+          log('dbResult', '✅ Database connection successful!', 'success');
+          log('dbResult', JSON.stringify(data.data, null, 2), 'info');
+        } else {
+          log('dbResult', '❌ Database connection failed', 'error');
+          log('dbResult', JSON.stringify(data, null, 2), 'error');
+        }
+      } catch (error) {
+        log('dbResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testGetStats() {
+      clearResult('dbResult');
+      log('dbResult', 'Fetching database statistics...', 'info');
+      
+      try {
+        const response = await fetch('/api/data/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+          log('dbResult', '✅ Stats retrieved successfully', 'success');
+          log('dbResult', JSON.stringify(data.data, null, 2), 'info');
+        } else {
+          log('dbResult', '❌ Failed to get stats', 'error');
+        }
+      } catch (error) {
+        log('dbResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testSampleRecords() {
+      clearResult('dbResult');
+      log('dbResult', 'Fetching sample records...', 'info');
+      
+      try {
+        const response = await fetch('/api/data?limit=5');
+        const data = await response.json();
+        
+        if (data.success) {
+          log('dbResult', `✅ Retrieved ${data.count} sample records`, 'success');
+          log('dbResult', JSON.stringify(data.data.slice(0, 3), null, 2), 'info');
+        } else {
+          log('dbResult', '❌ Failed to get records', 'error');
+        }
+      } catch (error) {
+        log('dbResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testSailorSearch() {
+      clearResult('searchResult');
+      const name = document.getElementById('searchName').value || 'John';
+      log('searchResult', `Searching for sailors with name: "${name}"...`, 'info');
+      
+      try {
+        const response = await fetch(`/api/data/search?skipper=${encodeURIComponent(name)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          log('searchResult', `✅ Found ${data.count} records`, 'success');
+          if (data.count > 0) {
+            log('searchResult', 'Sample results:', 'info');
+            log('searchResult', JSON.stringify(data.data.slice(0, 3), null, 2), 'info');
+          } else {
+            log('searchResult', '⚠️ No records found. Try different names.', 'info');
+            log('searchResult', 'Search criteria used: ' + JSON.stringify(data.criteria), 'info');
+          }
+        } else {
+          log('searchResult', '❌ Search failed', 'error');
+        }
+      } catch (error) {
+        log('searchResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testOpenAIConnection() {
+      clearResult('openaiResult');
+      log('openaiResult', 'Testing OpenAI connection with simple query...', 'info');
+      
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'how many sailors are in the database?' })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          log('openaiResult', '✅ OpenAI connection successful!', 'success');
+          log('openaiResult', 'Query Type: ' + data.queryType, 'info');
+          log('openaiResult', 'Response: ' + data.response.substring(0, 200), 'info');
+          log('openaiResult', 'Data: ' + JSON.stringify(data.data).substring(0, 200), 'info');
+        } else {
+          log('openaiResult', '❌ OpenAI test failed', 'error');
+        }
+      } catch (error) {
+        log('openaiResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testQueryClassification() {
+      clearResult('openaiResult');
+      const queries = [
+        'how many sailors listed',
+        'most active sailor',
+        'top 5 clubs',
+        'tell me about SYS club',
+        'find john'
+      ];
+      
+      log('openaiResult', 'Testing query classification...', 'info');
+      
+      for (const query of queries) {
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+          });
+          const data = await response.json();
+          
+          if (data.success) {
+            log('openaiResult', `✅ "${query}" -> ${data.queryType}`, 'success');
+          } else {
+            log('openaiResult', `❌ "${query}" failed`, 'error');
+          }
+        } catch (error) {
+          log('openaiResult', `❌ "${query}": ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function testClubSkippers() {
+      clearResult('clubResult');
+      const club = document.getElementById('clubName').value || 'SYS';
+      log('clubResult', `Getting skippers from club: "${club}"...`, 'info');
+      
+      try {
+        const response = await fetch(`/api/data/search?yacht_club=${encodeURIComponent(club)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          log('clubResult', `✅ Found ${data.count} records`, 'success');
+          if (data.count > 0) {
+            log('clubResult', 'Sample results:', 'info');
+            log('clubResult', JSON.stringify(data.data.slice(0, 3), null, 2), 'info');
+          } else {
+            log('clubResult', '⚠️ No records found', 'info');
+          }
+        } else {
+          log('clubResult', '❌ Search failed', 'error');
+        }
+      } catch (error) {
+        log('clubResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testTopClubs() {
+      clearResult('clubResult');
+      log('clubResult', 'Getting top clubs...', 'info');
+      
+      try {
+        const response = await fetch('/api/data/data-quality-report?limit=5');
+        const data = await response.json();
+        
+        if (data.success && data.data.top_sailors) {
+          log('clubResult', '✅ Retrieved top clubs data', 'success');
+          log('clubResult', JSON.stringify(data.data.top_sailors.slice(0, 5), null, 2), 'info');
+        } else {
+          log('clubResult', '❌ Failed to get top clubs', 'error');
+        }
+      } catch (error) {
+        log('clubResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function testMostActiveSailor() {
+      clearResult('clubResult');
+      log('clubResult', 'Getting most active sailor...', 'info');
+      
+      try {
+        // We need to add this endpoint or use chat API
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'most active sailor' })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          log('clubResult', '✅ Retrieved most active sailor', 'success');
+          log('clubResult', JSON.stringify(data.data, null, 2), 'info');
+        } else {
+          log('clubResult', '❌ Failed to get most active sailor', 'error');
+        }
+      } catch (error) {
+        log('clubResult', '❌ Error: ' + error.message, 'error');
+      }
+    }
+
+    async function runAllTests() {
+      clearResult('allTestsResult');
+      log('allTestsResult', '🚀 Starting comprehensive test suite...', 'info');
+      
+      await testDatabaseConnection();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await testGetStats();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await testSampleRecords();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await testOpenAIConnection();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await testQueryClassification();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await testMostActiveSailor();
+      
+      log('allTestsResult', '✅ All tests completed!', 'success');
+    }
+  </script>
+</body>
+</html>
+
